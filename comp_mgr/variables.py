@@ -26,11 +26,11 @@ NETWORK = {
     #    "Prealigner":  "192.168.30.70",
     #},
     "UNCONF": {
-        "Robot":       "172.20.9.150",
-        "Pendant":     "172.20.9.???",
-        "Lineartrack": "172.20.9.140",
-        "Rorze LP":    "172.20.9.100",
-        "Prealigner":  "172.20.9.160",
+    #    "Robot":       "172.20.9.150",
+    #    "Pendant":     "172.20.9.???",
+    #    "Lineartrack": "172.20.9.140",
+    #    "Rorze LP":    "172.20.9.100",
+    #    "Prealigner":  "172.20.9.160",
         "Simulation":  "127.0.0.1"
     }
 }

@@ -1,12 +1,5 @@
 """
-CLI interface for project_name project.
-
-Be creative! do whatever you want!
-
-- Install click or typer and create a CLI app
-- Use builtin argparse
-- Start a web application
-- Import things from your .base module
+CLI interface for Component Manager project.
 """
 import curses
 from comp_mgr.comp_if import CompIF
@@ -17,20 +10,15 @@ from comp_mgr.data import Component
 class Menu:
 
     def __init__(self, components: dict):
-        self.ncolumns = 2
-        self.current_row = 0
         self.components = components
         self.button_list = list(components.keys())
-        self.selected_option = None
-
-        self.button_list.append('Configure All Unconfigured')
+        self.button_list.append('Configure all unconfigured')
         self.button_list.append('Quit')
 
-    def draw_menu(self, stdscr):
-        menu = self.button_list
+    def draw_main_menu(self, stdscr, current_row):
         stdscr.clear()
-        for i, row in enumerate(menu):
-            if i == self.current_row:
+        for i, row in enumerate(self.button_list):
+            if i == current_row:
                 stdscr.attron(curses.color_pair(1))
                 stdscr.addstr(i + 2, 2, row)
                 stdscr.attroff(curses.color_pair(1))
@@ -38,75 +26,78 @@ class Menu:
                 stdscr.addstr(i + 2, 2, row)
         stdscr.refresh()
 
-    def draw_component_menu(self, stdscr, Component):
+    def draw_component_menu(self, stdscr, component: Component, current_row, button_list):
         stdscr.clear()
-        stdscr.addstr(0,0,Component.name)
-        stdscr.addstr(1,0,f"Current IP: {Component.ip}")
-        stdscr.addstr(2,0,f"Status: {Component.system}")
-        component_menu = ["Back","Quit"]
-        self.current_row = 3
-        for i, row in enumerate(component_menu):
-            if i == self.current_row:
+        stdscr.addstr(0,0,component.name)
+        stdscr.addstr(1,0,f"Current IP: {component.ip}")
+        stdscr.addstr(2,0,f"Status: {component.system}")
+
+        for i, row in enumerate(button_list):
+            if i == current_row:
                 stdscr.attron(curses.color_pair(1))
-                stdscr.addstr(i + 3, 2, row)
+                stdscr.addstr(i + 4, 4, row)
                 stdscr.attroff(curses.color_pair(1))
             else:
-                stdscr.addstr(i + 3, 2, row)
+                stdscr.addstr(i + 4, 4, row)
         stdscr.refresh()
         # Menu of the single component. Should show the component name, currenty IP, status
         # and also the configuration applied. Goal IP (SemDex or WMC or custom), checkboxes
         # for checklist items
 
-    def run(self,stdscr):
+    def run_main_menu(self,stdscr):
         # Disable cursor and enable keypad
         curses.curs_set(0)
-        stdscr.keypad(1)
-        stdscr.clear()
+        stdscr.keypad(True)
 
-        # Initialize colors
         curses.start_color()
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
-        menu = self.button_list
+        current_row = 0
 
         while True:
-            self.draw_menu(stdscr)
+            self.draw_main_menu(stdscr, current_row)
             key = stdscr.getch()
 
             if key == curses.KEY_UP:
-                self.current_row = (self.current_row - 1) % len(menu)
+                current_row = (current_row - 1) % len(self.button_list)
             elif key == curses.KEY_DOWN:
-                self.current_row = (self.current_row + 1) % len(menu)
+                current_row = (current_row + 1) % len(self.button_list)
             elif key == ord('\n'):  # Enter key
-                selected_option = menu[self.current_row]
-                if selected_option == 'Quit':
+                selected = self.button_list[current_row]
+                if selected == 'Quit':
                     break
-                if selected_option == 'Configure All':
-                    stdscr.addstr(len(menu) + 3, 2, f"Configuration starts...")
+                if selected == 'Configure all unconfigured':
+                    stdscr.addstr(len(self.button_list) + 3, 2, f"Configuration starts...")
                     stdscr.refresh()
                     stdscr.getch()
-                if selected_option == 'Back':
-                    self.draw_menu(stdscr)
-                    stdscr.refresh()
-                    stdscr.refresh()
                 else:
-                    component = self.components[selected_option]
-                    self.draw_component_menu(stdscr,component)
-                    stdscr.addstr(len(menu) + 3, 2, f"You selected: {component}")
-                    stdscr.refresh()
-                    stdscr.getch()
+                    component = self.components[selected]
+                    self.run_component_menu(stdscr,component)
+                    # After returning, select current row
+                    current_row = 0
+    
+    def run_component_menu(self, stdscr, component: Component):
+        button_list = ["Back", "Quit"]
+        current_row = 0
+        while True:
+            self.draw_component_menu(stdscr, component, current_row, button_list)
+            key = stdscr.getch()
 
-        # Close curses screen
-        stdscr.clear()
-        stdscr.addstr(2, 2, f"Exiting. Last selected: {selected_option}")
-        stdscr.refresh()
-        stdscr.getch()
+            if key == curses.KEY_UP:
+                current_row = (current_row - 1) % len(button_list)
+            elif key == curses.KEY_DOWN:
+                current_row = (current_row + 1) % len(button_list)
+            elif key == ord('\n'):  # Enter key
+                selected = button_list[current_row]
+                if selected == 'Back':
+                    break
+                elif selected == 'Quit':
+                    exit(0)
 
 def main():
     """
     The main function executes on commands:
-    `python -m project_name` and `$ project_name `.
-
+    `python -m comp_mgr`
     Program's entry point.
     """
 
@@ -114,8 +105,7 @@ def main():
 
     Components = CompIF()
     clist = Components.discover()
-    #clist = ["Robot, IP: 192.168.0.1, Status: SEMDEX"]
 
     menu = Menu(clist)
-    curses.wrapper(menu.run)
+    curses.wrapper(menu.run_main_menu)
     print("Program ran successfully")
