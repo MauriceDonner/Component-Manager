@@ -31,7 +31,6 @@ class Menu:
         stdscr.addstr(0,0,component.name)
         stdscr.addstr(1,0,f"Current IP: {component.ip}")
         stdscr.addstr(2,0,f"Status: {component.system}")
-
         for i, row in enumerate(button_list):
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))
@@ -48,16 +47,13 @@ class Menu:
         # Disable cursor and enable keypad
         curses.curs_set(0)
         stdscr.keypad(True)
-
         curses.start_color()
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
         current_row = 0
-
         while True:
             self.draw_main_menu(stdscr, current_row)
             key = stdscr.getch()
-
             if key == curses.KEY_UP:
                 current_row = (current_row - 1) % len(self.button_list)
             elif key == curses.KEY_DOWN:
@@ -82,7 +78,6 @@ class Menu:
         while True:
             self.draw_component_menu(stdscr, component, current_row, button_list)
             key = stdscr.getch()
-
             if key == curses.KEY_UP:
                 current_row = (current_row - 1) % len(button_list)
             elif key == curses.KEY_DOWN:
@@ -100,8 +95,6 @@ def main():
     `python -m comp_mgr`
     Program's entry point.
     """
-
-    # TODO: Function that detects any component according to Network variable
 
     Components = CompIF()
     clist = Components.discover()
