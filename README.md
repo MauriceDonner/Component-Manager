@@ -4,7 +4,7 @@ This software scans the local network for all known component IPs (defined in [v
 
 ## Running the software
 
-A compiled version of the software can be found in [dist](dist/). Simply run `ComponentManager.exe` on a Windows system.
+A compiled version of the software can be found in `releases`. Simply run `ComponentManager.exe` on a Windows system.
 
 ## The way it works
 
@@ -23,13 +23,62 @@ Alternatively, single components can be selected and configured individually.
 The type of components and their configurations can be found in the list below:
 
 - Loadport
-    - `WMC:    ` Standard IP: `192.168.30.111` (*.121 for second)
-    - `SemDex: ` Standard IP: `192.168.0.21` (*.22 for second)
+    - [ ] IP setting for either SemDex or WMC system (LP number needs to be kept in mind)
+    - [ ] Controller ID check for Rorze Loadports
+    - [ ] Rorze Loadport checklist items
+        - [ ] Firmware version
+        - [ ] Backup original settings
+        - [ ] Maintenance software settings
+            - Body No
+            - Auto Output
+            - TCP/IP
+            - Host IP Adr.
+            - Log Host
+            - Own IP
+            - Presence led
+            - i/o
+        - [ ] Backup new settings
+        - [ ] Origin search and whether it is successful
 - Robot
+    - [ ] IP setting for either SemDex or WMC system
+    - [ ] Controller ID check
+    - [ ] No Interpolation setting change
+    - [ ] Checklist items
+        - [ ] Firmware version
+        - [ ] Backup original settings
+        - [ ] Maintenance software settings
+            - Host IP Address
+            - Host Port
+            - Log Host
+            - Own IP Address
+        - [ ] Backup new settings
+        - [ ] Origin search and whether it is successful
 - Teaching Pendant
+    - Only check for connection, settings are changed within Pendant
 - Lineartrack
-- Log Host
+    - [ ] IP setting for either SemDex or WMC system
+    - [ ] Controller ID check
+    - [ ] Backup original settings
+    - [ ] Maintenance Software settings
+        - Host IP Address
+        - Host Port
+        - Log Host
+    - [ ] Backup new settings
 - Prealigner
+    - [ ] IP setting for either SemDex or WMC system
+    - [ ] Controller ID check
+    - [ ] Backup original settings
+    - [ ] Firmware version
+    - [ ] Maintenance Software settings
+        - Host IP Address
+        - Host Port
+        - Log Host
+        - Host Interface
+        - Body No
+    - [ ] Backup new settings
+    - [ ] Origin search and whether it is successful
+- Log Host
+    - Only check for connection. No settings are changed.
 
 ## Compiling and testing the software
 
