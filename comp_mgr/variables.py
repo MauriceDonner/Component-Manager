@@ -35,5 +35,30 @@ NETWORK = {
     }
 }
 
-#class Network:
-#    def
+CANCEL_CODES = {
+    "0001": "Command not designated",
+    "0002": "The designated target motion not equipped",
+    "0003": "Too many/too few parameters (number of elements)",
+    "0004": "Command not equipped",
+    "0005": "Too many/too few parameters",
+    "0006": "Abnormal range of the parameter",
+    "0007": "Abnormal mode",
+    "0008": "Abnormal data",
+    "0009": "System in preparation",
+    "000A": "Origin search not completed",
+    "000B": "Moving/Processing",
+    "000C": "No motion",
+    "000D": "Abnormal flash memory",
+    "000E": "Insufficient memory",
+    "000F": "Error-occurred state",
+    "0010": "Origin search is completed but the motion cannot be started due to interlock",
+    "0011": "The emergency stop signal is turned on.",
+    "0012": "The temporarily stop signal is turned on.",
+    "0013": "Abnormal interlock signal",
+    "0014": "Drive power is turned off.",
+    "0015": "Not excited",
+    "0016": "Abnormal current position",
+    "0017": "Abnormal target position",
+    "0018": "Command processing",
+    "0019": "Invalid work state"
+}

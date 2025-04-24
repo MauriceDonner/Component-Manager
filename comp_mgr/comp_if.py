@@ -4,9 +4,10 @@ Main component interface module.
 Contains classes and functions for component communication
 """
 
-import subprocess
-import platform
 import concurrent.futures
+import socket
+import subprocess
+import sys
 from comp_mgr.variables import NETWORK
 from comp_mgr.data import Component
 
@@ -21,6 +22,11 @@ class CompIF:
         command = ["ping", "-n", "1", "-w", "1000", ip]  # 500ms timeout
         result = subprocess.run(command, stdout=subprocess.DEVNULL)
         return ip if result.returncode == 0 else None
+
+    def establish_connection(self,ip,port=12100):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(5)
+            sock.connect((ip,port))
 
     # Discover all components in the relevant sub nets
     def discover(self):

@@ -4,6 +4,7 @@ CLI interface for Component Manager project.
 import curses
 from comp_mgr.comp_if import CompIF
 from comp_mgr.data import Component
+from testing.methods import tests
 
 # TODO: Organize requirements and installations properly
 
@@ -13,6 +14,7 @@ class Menu:
         self.components = components
         self.button_list = list(components.keys())
         self.button_list.append('Configure all unconfigured')
+        self.button_list.append('Testing')
         self.button_list.append('Quit')
 
     def draw_main_menu(self, stdscr, current_row):
@@ -39,9 +41,18 @@ class Menu:
             else:
                 stdscr.addstr(i + 4, 4, row)
         stdscr.refresh()
-        # Menu of the single component. Should show the component name, currenty IP, status
-        # and also the configuration applied. Goal IP (SemDex or WMC or custom), checkboxes
-        # for checklist items
+
+    def draw_testing_menu(self, stdscr, current_row, button_list):
+        stdscr.clear()
+        stdscr.addstr(0,0,f"Testing area! Proceed with caution!")
+        for i, row in enumerate(button_list):
+            if i == current_row:
+                stdscr.attron(curses.color_pair(1))
+                stdscr.addstr(i + 2, 4, row)
+                stdscr.attroff(curses.color_pair(1))
+            else:
+                stdscr.addstr(i + 2, 4, row)
+        stdscr.refresh()
 
     def run_main_menu(self,stdscr):
         # Disable cursor and enable keypad
@@ -66,6 +77,8 @@ class Menu:
                     stdscr.addstr(len(self.button_list) + 3, 2, f"Configuration starts...")
                     stdscr.refresh()
                     stdscr.getch()
+                if selected == 'Testing':
+                    self.run_testing_menu(stdscr, tests(stdscr))
                 else:
                     component = self.components[selected]
                     self.run_component_menu(stdscr,component)
@@ -88,6 +101,27 @@ class Menu:
                     break
                 elif selected == 'Quit':
                     exit(0)
+
+    def run_testing_menu(self, stdscr, tests):
+        button_list = tests.button_list
+        current_row = 0
+        while True:
+            self.draw_testing_menu(stdscr, current_row, button_list)
+            key = stdscr.getch()
+            if key == curses.KEY_UP:
+                current_row = (current_row - 1) % len(button_list)
+            elif key == curses.KEY_DOWN:
+                current_row = (current_row + 1) % len(button_list)
+            elif key == ord('\n'):  # Enter key
+                selected = button_list[current_row]
+                if selected == 'Back':
+                    break
+                elif selected == 'Quit':
+                    exit(0)
+                else:
+                    tests.respond(selected)
+                    stdscr.refresh()
+                    stdscr.getch()
 
 def main():
     """
