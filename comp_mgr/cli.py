@@ -12,13 +12,17 @@ class Menu:
 
     def __init__(self, components: dict):
         self.components = components
-        self.button_list = list(components.keys())
+
+    def init_button_list(self):
+        self.button_list = list(self.components.keys())
         self.button_list.append('Configure all unconfigured')
         self.button_list.append('Testing')
+        self.button_list.append('Retry connection')
         self.button_list.append('Quit')
 
     def draw_main_menu(self, stdscr, current_row):
         stdscr.clear()
+        self.init_button_list()
         for i, row in enumerate(self.button_list):
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))
@@ -45,6 +49,7 @@ class Menu:
     def draw_testing_menu(self, stdscr, current_row, button_list):
         stdscr.clear()
         stdscr.addstr(0,0,f"Testing area, proceed with caution!")
+        self.init_button_list()
         for i, row in enumerate(button_list):
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))
@@ -55,8 +60,10 @@ class Menu:
         stdscr.refresh()
 
     def run_main_menu(self,stdscr):
+        self.init_button_list()
         # Disable cursor and enable keypad
         curses.curs_set(0)
+
         stdscr.keypad(True)
         curses.start_color()
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
@@ -79,6 +86,12 @@ class Menu:
                     stdscr.getch()
                 if selected == 'Testing':
                     self.run_testing_menu(stdscr, tests(stdscr))
+                if selected == 'Retry connection':
+                    stdscr.addstr(len(self.button_list) + 3, 2, f"Scanning for components...")
+                    stdscr.refresh()
+                    Components = CompIF()
+                    self.components = Components.discover()
+                    self.init_button_list()
                 else:
                     component = self.components[selected]
                     self.run_component_menu(stdscr,component)
