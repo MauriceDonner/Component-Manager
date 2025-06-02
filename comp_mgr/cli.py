@@ -80,13 +80,13 @@ class Menu:
                 selected = self.button_list[current_row]
                 if selected == 'Quit':
                     break
-                if selected == 'Configure all unconfigured':
+                elif selected == 'Configure all unconfigured':
                     stdscr.addstr(len(self.button_list) + 3, 2, f"Configuration starts...")
                     stdscr.refresh()
                     stdscr.getch()
-                if selected == 'Testing':
+                elif selected == 'Testing':
                     self.run_testing_menu(stdscr, tests(stdscr))
-                if selected == 'Retry connection':
+                elif selected == 'Retry connection':
                     stdscr.addstr(len(self.button_list) + 3, 2, f"Scanning for components...")
                     stdscr.refresh()
                     Components = CompIF()
