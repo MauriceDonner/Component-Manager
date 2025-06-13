@@ -2,6 +2,7 @@
 CLI interface for Component Manager project.
 """
 import curses
+import sys
 from comp_mgr.methods import CompIF
 from comp_mgr.comp import Component
 from testing.methods import tests
@@ -111,7 +112,7 @@ class Menu:
                 if selected == 'Back':
                     break
                 elif selected == 'Quit':
-                    exit(0)
+                    sys.exit(0)
 
     def run_testing_menu(self, stdscr, tests):
         button_list = tests.button_list
@@ -128,7 +129,7 @@ class Menu:
                 if selected == 'Back':
                     break
                 elif selected == 'Quit':
-                    exit(0)
+                    sys.exit(0)
                 else:
                     tests.respond(selected)
                     stdscr.refresh()
