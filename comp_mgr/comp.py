@@ -1,9 +1,10 @@
 """
-Data Module
+Component Module
 
-All data during commissioning is stored in these class instances
+All Component data and methods is stored in these class instances
 """
-from comp_mgr.variables import NETWORK
+import socket
+from comp_mgr.config import NETWORK
 
 class Component:
     def __init__(self, name, system, type):
@@ -17,3 +18,8 @@ class Component:
             self.defaultip = NETWORK["UNCONF"][self.type]
         elif "Loadport" in self.type:
             self.defaultip = NETWORK["UNCONF"]["Rorze LP"]
+    
+    def establish_connection(self,ip,port=12100):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(5)
+            sock.connect((ip,port))

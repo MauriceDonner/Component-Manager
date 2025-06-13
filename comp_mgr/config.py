@@ -1,7 +1,7 @@
 """
-Variables module
+Configuration module
 
-Contains all program variables, such as static IPs or configuration parameters that are not usually changed
+Contains all configuration data, such as static IPs or configuration parameters that are not usually changed
 """
 
 NETWORK = {
@@ -20,8 +20,8 @@ NETWORK = {
         "Pendant":         "192.168.30.6",
         "Lineartrack":     "192.168.30.21",
         "Log Host":        "192.168.30.1",
-        "Reolink_Han": "192.168.30.4",
-        "Reolink_Met": "192.168.30.5",
+        "Reolink_Han":     "192.168.30.4",
+        "Reolink_Met":     "192.168.30.5",
         "Reolink_0":       "192.168.30.55",
         "Reolink_1":       "192.168.30.56",
         "Reolink_2":       "192.168.30.57",

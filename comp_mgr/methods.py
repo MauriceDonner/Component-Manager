@@ -1,15 +1,14 @@
 """
-Main component interface module.
+Main functional module.
 
-Contains classes and functions for component communication
+Contains utility classes and functions
 """
 
 import concurrent.futures
-import socket
 import subprocess
-import sys
-from comp_mgr.variables import NETWORK
-from comp_mgr.data import Component
+import threading
+from comp_mgr.config import NETWORK
+from comp_mgr.comp import Component
 
 class CompIF:
 
@@ -17,16 +16,22 @@ class CompIF:
         self.status = "OK"
         self.system = "UNCONF"
 
+        # TODO testing
+        self.connection_threads = []
+
     # Ping function for windows (doesnt work on linux)
     def ping(self,ip):
         command = ["ping", "-n", "1", "-w", "1000", ip]  # 500ms timeout
         result = subprocess.run(command, stdout=subprocess.DEVNULL)
         return ip if result.returncode == 0 else None
 
-    def establish_connection(self,ip,port=12100):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.settimeout(5)
-            sock.connect((ip,port))
+    # TODO testing
+    def start_background_connections(self, component_list: list):
+        for component in component_list:
+            ip = component.ip
+            t = threading.Thread(target=self.establish_connection(ip), args=(ip),daemon=True)
+            t.start()
+            self.connection_threads.append(t)
 
     # Discover all components in the relevant sub nets
     def discover(self):
@@ -51,7 +56,7 @@ class CompIF:
                 if result:
                     alive.append(result)
         
-        # Components are stored in a dictionary and are instances off the data.Component class
+        # Component data is stored in a dictionary and are instances off the data.Component class
         Clist = {}
         for system in NETWORK:
             for entry in NETWORK[system]:

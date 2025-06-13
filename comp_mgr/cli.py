@@ -2,11 +2,9 @@
 CLI interface for Component Manager project.
 """
 import curses
-from comp_mgr.comp_if import CompIF
-from comp_mgr.data import Component
+from comp_mgr.methods import CompIF
+from comp_mgr.comp import Component
 from testing.methods import tests
-
-# TODO: Organize requirements and installations properly
 
 class Menu:
 
@@ -145,6 +143,9 @@ def main():
 
     Components = CompIF()
     clist = Components.discover()
+
+    # TODO testing, what argument goes here?
+    # Components.start_background_connections()
 
     menu = Menu(clist)
     curses.wrapper(menu.run_main_menu)
