@@ -31,39 +31,15 @@ class Menu:
                 stdscr.addstr(i + 2, 2, row)
         stdscr.refresh()
 
-    def draw_component_menu(self, stdscr, component: Component, current_row, button_list):
-        stdscr.clear()
-        stdscr.addstr(0,0,component.name)
-        stdscr.addstr(1,0,f"Current IP: {component.ip}")
-        stdscr.addstr(2,0,f"Status: {component.system}")
-        for i, row in enumerate(button_list):
-            if i == current_row:
-                stdscr.attron(curses.color_pair(1))
-                stdscr.addstr(i + 4, 4, row)
-                stdscr.attroff(curses.color_pair(1))
-            else:
-                stdscr.addstr(i + 4, 4, row)
-        stdscr.refresh()
-
-    def draw_testing_menu(self, stdscr, current_row, button_list):
-        stdscr.clear()
-        stdscr.addstr(0,0,f"Testing area, proceed with caution!")
-        self.init_button_list()
-        for i, row in enumerate(button_list):
-            if i == current_row:
-                stdscr.attron(curses.color_pair(1))
-                stdscr.addstr(i + 2, 4, row)
-                stdscr.attroff(curses.color_pair(1))
-            else:
-                stdscr.addstr(i + 2, 4, row)
-        stdscr.refresh()
-
     def run_main_menu(self,stdscr):
+
         self.init_button_list()
+
         # Disable cursor and enable keypad
         curses.curs_set(0)
-
         stdscr.keypad(True)
+
+        # Choose Colors
         curses.start_color()
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
@@ -96,7 +72,21 @@ class Menu:
                     self.run_component_menu(stdscr,component)
                     # After returning, select current row
                     current_row = 0
-    
+
+    def draw_component_menu(self, stdscr, component: Component, current_row, button_list):
+        stdscr.clear()
+        stdscr.addstr(0,0,component.name)
+        stdscr.addstr(1,0,f"Current IP: {component.ip}")
+        stdscr.addstr(2,0,f"Status: {component.system}")
+        for i, row in enumerate(button_list):
+            if i == current_row:
+                stdscr.attron(curses.color_pair(1))
+                stdscr.addstr(i + 4, 4, row)
+                stdscr.attroff(curses.color_pair(1))
+            else:
+                stdscr.addstr(i + 4, 4, row)
+        stdscr.refresh()
+
     def run_component_menu(self, stdscr, component: Component):
         button_list = ["Back", "Quit"]
         current_row = 0
@@ -113,6 +103,19 @@ class Menu:
                     break
                 elif selected == 'Quit':
                     sys.exit(0)
+
+    def draw_testing_menu(self, stdscr, current_row, button_list):
+        stdscr.clear()
+        stdscr.addstr(0,0,f"Testing area, proceed with caution!")
+        self.init_button_list()
+        for i, row in enumerate(button_list):
+            if i == current_row:
+                stdscr.attron(curses.color_pair(1))
+                stdscr.addstr(i + 2, 4, row)
+                stdscr.attroff(curses.color_pair(1))
+            else:
+                stdscr.addstr(i + 2, 4, row)
+        stdscr.refresh()
 
     def run_testing_menu(self, stdscr, tests):
         button_list = tests.button_list
