@@ -28,7 +28,13 @@ class Component:
         try:
             sock.connect((self.ip, port))
             # Show response
-            self.status = sock.recv(1024)
+            read = str(sock.recv(1024))[2:-3]
+            self.type = read.split('.')[0]
+            message = read.split('.')[1]
+
+            if message == "CNCT":
+                self.status = f"{self.type} is connected"
+
         except socket.timeout:
             self.status = "ERROR: Connection Timeout"
         except socket.error as e:
