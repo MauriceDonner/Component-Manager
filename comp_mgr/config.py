@@ -74,3 +74,6 @@ CANCEL_CODES = {
     "0018": "Command processing",
     "0019": "Invalid work state"
 }
+
+class MESSAGES:
+    SUCCESS = "Program ran successfully"

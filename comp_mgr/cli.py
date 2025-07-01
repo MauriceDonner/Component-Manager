@@ -3,6 +3,8 @@ CLI interface for Component Manager project.
 """
 import curses
 import sys
+import threading
+from comp_mgr.config import MESSAGES
 from comp_mgr.methods import CompIF
 from comp_mgr.comp import Component
 from testing.methods import tests
@@ -13,9 +15,12 @@ class Menu:
         self.components = clist
 
     def init_button_list(self):
-        self.button_list = list(self.components.keys())
-        self.button_list.append('Configure all unconfigured')
-        self.button_list.append('Testing')
+        self.button_list = []
+        for i in self.components.keys():
+            button = self.components[i]["IP"]+" "+i
+            self.button_list.append(button)
+        # self.button_list.append('Configure all unconfigured')
+        # self.button_list.append('Testing')
         self.button_list.append('Retry connection')
         self.button_list.append('Quit')
 
@@ -54,7 +59,7 @@ class Menu:
             elif key == ord('\n'):  # Enter key
                 selected = self.button_list[current_row]
                 if selected == 'Quit':
-                    break
+                    sys.exit(0)
                 elif selected == 'Configure all unconfigured':
                     stdscr.addstr(len(self.button_list) + 3, 2, f"Configuration starts...")
                     stdscr.refresh()
@@ -68,39 +73,55 @@ class Menu:
                     self.components = comp_if.discover()
                     self.init_button_list()
                 else:
-                    component = self.components[selected]
+                    component = self.components[selected.split(" ")[1]]
                     self.run_component_menu(stdscr,component)
                     # After returning, select current row
                     current_row = 0
 
-    def draw_component_menu(self, stdscr, comp_info: dict, current_row, button_list):
+    def draw_component_menu(self, stdscr, component: Component, current_row, button_list):
         stdscr.clear()
-        stdscr.addstr(0,0,comp_info["type"])
-        stdscr.addstr(1,0,f"Current IP: {comp_info["IP"]}")
-        stdscr.addstr(2,0,f"Status: {comp_info["system"]}")
+        stdscr.addstr(0,0,component.type)
+        stdscr.addstr(1,0,f"Current IP: {component.ip}")
+        stdscr.addstr(2,0,f"System: {component.system}")
+        stdscr.addstr(3,0,f"Status: {component.status}")
         for i, row in enumerate(button_list):
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))
-                stdscr.addstr(i + 4, 4, row)
+                stdscr.addstr(i + 5, 5, row)
                 stdscr.attroff(curses.color_pair(1))
             else:
-                stdscr.addstr(i + 4, 4, row)
+                stdscr.addstr(i + 5, 5, row)
         stdscr.refresh()
 
     def run_component_menu(self, stdscr, comp_info: dict):
 
         # Instantiate Component
         component = Component(
+            ip = comp_info["IP"],
             system = comp_info["system"],
             type = comp_info["type"]
         )
 
+        def update_status():
+            try:
+                component.establish_connection()
+            except Exception as e:
+                comp_info["status"] = f"Error: {e}"
+        
+        connection_thread = threading.Thread(target=update_status, daemon=True)
+        connection_thread.start()
+
+        # Start Menu at the same time (update every 500ms)
         button_list = ["Back", "Quit"]
         current_row = 0
+        stdscr.timeout(1000)
+
         while True:
-            self.draw_component_menu(stdscr, comp_info, current_row, button_list)
+            self.draw_component_menu(stdscr, component, current_row, button_list)
             key = stdscr.getch()
-            if key == curses.KEY_UP:
+            if key == -1:
+                continue
+            elif key == curses.KEY_UP:
                 current_row = (current_row - 1) % len(button_list)
             elif key == curses.KEY_DOWN:
                 current_row = (current_row + 1) % len(button_list)
@@ -160,4 +181,3 @@ def main():
 
     menu = Menu(clist)
     curses.wrapper(menu.run_main_menu)
-    print("Program ran successfully")
