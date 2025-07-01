@@ -20,7 +20,7 @@ class Menu:
             button = self.components[i]["IP"]+" "+i
             self.button_list.append(button)
         # self.button_list.append('Configure all unconfigured')
-        # self.button_list.append('Testing')
+        self.button_list.append('Testing')
         self.button_list.append('Retry connection')
         self.button_list.append('Quit')
 
@@ -106,13 +106,13 @@ class Menu:
             try:
                 component.establish_connection()
             except Exception as e:
-                comp_info["status"] = f"Error: {e}"
+                component.status = f"Error: {e}"
         
         connection_thread = threading.Thread(target=update_status, daemon=True)
         connection_thread.start()
 
         # Start Menu at the same time (update every 500ms)
-        button_list = ["Back", "Quit"]
+        button_list = ["Origin", "Back", "Quit"]
         current_row = 0
         stdscr.timeout(1000)
 
@@ -131,6 +131,10 @@ class Menu:
                     break
                 elif selected == 'Quit':
                     sys.exit(0)
+                elif selected == 'Origin':
+                    connection_thread = threading.Thread(target=component.origin_search, daemon=True)
+                    connection_thread.start()
+
 
     def draw_testing_menu(self, stdscr, current_row, button_list):
         stdscr.clear()

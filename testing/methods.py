@@ -27,7 +27,7 @@ class tests:
             command = "oTRB1.ORGN(0,0)"
             self.stdscr.addstr(row+1,0,'Press a key to start origin search')
             self.stdscr.getch()
-            sock.sendall(command.encode('utf-8'))
+            sock.sendall(command.encode())
 
             # Show response and close
             self.stdscr.addstr(row+2,0,sock.recv(1024))
