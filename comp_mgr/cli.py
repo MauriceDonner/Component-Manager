@@ -142,7 +142,7 @@ def main():
     Program's entry point.
     """
 
-    Components = CompIF()
+    Components = CompIF(debug=1)
     clist = Components.discover()
 
     # TODO testing, what argument goes here?

@@ -7,14 +7,16 @@ Contains utility classes and functions
 import concurrent.futures
 import subprocess
 import threading
+import json # Debugging
 from comp_mgr.config import NETWORK
 from comp_mgr.comp import Component
 
 class CompIF:
 
-    def __init__(self):
+    def __init__(self,debug=0):
         self.status = "OK"
         self.system = "UNCONF"
+        self.debug = debug
 
         # TODO testing
         self.connection_threads = []
@@ -62,6 +64,13 @@ class CompIF:
             for entry in NETWORK[system]:
                 if NETWORK[system][entry] in alive:
                     name = f"{entry}_{system}"
-                    Clist[name] = Component(name,system,entry)
+                    Clist[name] = {}
+                    Clist[name]["system"] = system
+                    Clist[name]["type"] = entry
+                    Clist[name]["IP"] = NETWORK[system][entry]
+
+        if self.debug:
+            with open('testing/Component_List_Dict.json', 'w') as out:
+                json.dump(Clist, out)
 
         return Clist
