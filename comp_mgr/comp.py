@@ -42,7 +42,7 @@ class Component:
     
     def origin_search(self):
         # Origin search command (fix later)
-        command = f"oTRB1.ORGNoTRB1.ORGN(0,0)"
+        command = f"SIMULATIONoTRB1.ORGN(0,0)"
         self.sock.sendall(command.encode('utf-8'))
         read = str(self.sock.recv(1024))[2:-3]
         message = read.split('.')[1]
