@@ -68,16 +68,17 @@ class Menu:
                     self.components = Components.discover()
                     self.init_button_list()
                 else:
+                    # instantiate Component
                     component = self.components[selected]
                     self.run_component_menu(stdscr,component)
                     # After returning, select current row
                     current_row = 0
 
-    def draw_component_menu(self, stdscr, component: Component, current_row, button_list):
+    def draw_component_menu(self, stdscr, component: dict, current_row, button_list):
         stdscr.clear()
-        stdscr.addstr(0,0,component.name)
-        stdscr.addstr(1,0,f"Current IP: {component.ip}")
-        stdscr.addstr(2,0,f"Status: {component.system}")
+        stdscr.addstr(0,0,component["type"])
+        stdscr.addstr(1,0,f"Current IP: {component["IP"]}")
+        stdscr.addstr(2,0,f"Status: {component["system"]}")
         for i, row in enumerate(button_list):
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))
