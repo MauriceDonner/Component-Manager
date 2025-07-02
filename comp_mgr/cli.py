@@ -84,6 +84,10 @@ class Menu:
         stdscr.addstr(1,0,f"Current IP: {component.ip}")
         stdscr.addstr(2,0,f"System: {component.system}")
         stdscr.addstr(3,0,f"Status: {component.status}")
+
+        if component.busy:
+            stdscr.addstr(0,50,f'=== BUSY ===')
+
         for i, row in enumerate(button_list):
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))

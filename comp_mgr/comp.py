@@ -4,6 +4,7 @@ Component Module
 All Component data and methods is stored in these class instances
 """
 import socket
+import threading
 from comp_mgr.config import NETWORK
 
 class Component:
@@ -14,6 +15,8 @@ class Component:
         self.type = type
         self.status = "Initializing..."
         self.display_name = self.type
+        self.lock = threading.Lock()
+        self.busy = False
 
         # Check, whether the component has a default IP
         if self.type in NETWORK["UNCONF"].keys():
@@ -45,41 +48,51 @@ class Component:
             self.status = f"Socket error: {e}"
 
     def send_and_read(self,command, buffer=1024):
-        self.sock.sendall(command.encode('utf-8')) 
-        read = str(self.sock.recv(buffer))[2:-3]
-        # TODO Cut the Component name. Maybe include it again for non-rorze.
-        message = read.split('.')[1]
-        self.status = "Reading data..."
-        # TODO Wait until information is read?
-        try: 
-            self.sock.settimeout(5)
+
+        with self.lock:
+            self.busy = True
+            self.sock.sendall(command.encode('utf-8')) 
             read = str(self.sock.recv(buffer))[2:-3]
+            # TODO Cut the Component name. Maybe include it again for non-rorze.
             message = read.split('.')[1]
-        except socket.timeout:
-            self.status = "ERROR: Motion timeout"
-        except socket.error as e:
-            self.status = f"Socket error: {e}"
+            self.status = "Reading data..."
+            # TODO Wait until information is read?
+            try: 
+                self.sock.settimeout(5)
+                read = str(self.sock.recv(buffer))[2:-3]
+                message = read.split('.')[1]
+            except socket.timeout:
+                self.status = "ERROR: Motion timeout"
+            except socket.error as e:
+                self.status = f"Socket error: {e}"
+            finally:
+                self.busy = False
         
         self.status = f"Output: {message}"
 
         return message
     
     def send_and_read_motion(self,command,buffer=1024):
-        self.sock.sendall(command.encode('utf-8'))
-        read = str(self.sock.recv(buffer))[2:-3]
-        message = read.split('.')[1]
-        self.status = "Component is in motion..."
-        # Wait until motion finishes
-        try: 
-            self.sock.settimeout(120)
+
+        with self.lock:
+            self.busy = True
+            self.sock.sendall(command.encode('utf-8'))
             read = str(self.sock.recv(buffer))[2:-3]
             message = read.split('.')[1]
-        except socket.timeout:
-            self.status = "ERROR: Motion timeout"
-        except socket.error as e:
-            self.status = f"Socket error: {e}"
-        
-        self.status = f"Motion completed. {message}"
+            self.status = "Component is in motion..."
+            # Wait until motion finishes
+            try: 
+                self.sock.settimeout(120)
+                read = str(self.sock.recv(buffer))[2:-3]
+                message = read.split('.')[1]
+            except socket.timeout:
+                self.status = "ERROR: Motion timeout"
+            except socket.error as e:
+                self.status = f"Socket error: {e}"
+            finally:
+                self.busy = False
+            
+            self.status = f"Motion completed. {message}"
 
         return message
 
@@ -91,6 +104,8 @@ class Rorze(Component):
         self.type = type
         self.status = "Initializing..."
         self.display_name = f"Rorze {self.type}"
+        self.lock = threading.Lock()
+        self.busy = False
 
     def read_data(self):
         command = f"{self.type}.RTDT(0)"
