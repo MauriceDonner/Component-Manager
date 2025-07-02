@@ -6,7 +6,7 @@ import sys
 import threading
 from comp_mgr.config import MESSAGES
 from comp_mgr.methods import CompIF
-from comp_mgr.comp import Component
+from comp_mgr.comp import *
 from testing.methods import tests
 
 class Menu:
@@ -80,7 +80,7 @@ class Menu:
 
     def draw_component_menu(self, stdscr, component: Component, current_row, button_list):
         stdscr.clear()
-        stdscr.addstr(0,0,component.type)
+        stdscr.addstr(0,0,f'Component: {component.display_name}')
         stdscr.addstr(1,0,f"Current IP: {component.ip}")
         stdscr.addstr(2,0,f"System: {component.system}")
         stdscr.addstr(3,0,f"Status: {component.status}")
@@ -95,24 +95,31 @@ class Menu:
 
     def run_component_menu(self, stdscr, comp_info: dict):
 
-        # Instantiate Component
-        component = Component(
+        # Check component type
+        type = CompIF.check_component_type(comp_info)
+
+        if not any(p in type for p in ['TRB','ALN','STG']):
+            raise Exception("Other components than Rorze have not been implemented yet")
+
+        # Instantiate a Rorze component 
+        component = Rorze(
             ip = comp_info["IP"],
             system = comp_info["system"],
             type = comp_info["type"]
         )
 
+        # Start thread that updates component status in the background            
         def update_status():
             try:
                 component.establish_connection()
             except Exception as e:
-                component.status = f"Error: {e}"
-        
+                component.status = f'Error: {e}'
+
         connection_thread = threading.Thread(target=update_status, daemon=True)
         connection_thread.start()
 
-        # Start Menu at the same time (update every 500ms)
-        button_list = ["Origin", "Back", "Quit"]
+        # Start Menu (update every 500ms)
+        button_list = ["Origin", "Read", "Back", "Quit"]
         current_row = 0
         stdscr.timeout(1000)
 
@@ -133,6 +140,9 @@ class Menu:
                     sys.exit(0)
                 elif selected == 'Origin':
                     connection_thread = threading.Thread(target=component.origin_search, daemon=True)
+                    connection_thread.start()
+                elif selected == 'Read':
+                    connection_thread = threading.Thread(target=component.read_data, daemon=True)
                     connection_thread.start()
 
 

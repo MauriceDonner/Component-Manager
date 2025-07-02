@@ -34,6 +34,25 @@ class CompIF:
             t = threading.Thread(target=self.establish_connection(ip), args=(ip),daemon=True)
             t.start()
             self.connection_threads.append(t)
+    
+    # Check which type of component is connected
+    def check_component_type(comp_info):
+        component = Component(
+            ip = comp_info["IP"],
+            system = comp_info["system"],
+            type = comp_info["type"]
+        )
+
+        try:
+            component.establish_connection() # Modifies its type
+        except Exception as e:
+            raise Exception(f"Failed to establish connection to Component {component.type}: {e}")
+            
+        # If rorze component is connected use a diffent class
+        if any(p in component.type for p in ['TRB','ALN','STG']):
+            return component.type
+        else:
+            raise Exception(f"Unkown Component type {component.type}")
 
     # Discover all components in the relevant sub nets
     def discover(self):

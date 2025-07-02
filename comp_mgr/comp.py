@@ -7,11 +7,13 @@ import socket
 from comp_mgr.config import NETWORK
 
 class Component:
+
     def __init__(self, ip, system, type):
         self.ip = ip
         self.system = system
         self.type = type
         self.status = "Initializing..."
+        self.display_name = self.type
 
         # Check, whether the component has a default IP
         if self.type in NETWORK["UNCONF"].keys():
@@ -21,15 +23,17 @@ class Component:
     
     def establish_connection(self,port=12100):
         self.status = "Connecting..."
-
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(5)
-
         try:
             self.sock.connect((self.ip, port))
-            # Show response
+            # TODO [2:-3] cuts the b' and \\r that is always sent with a rorze status
+            # what about other components?
             read = str(self.sock.recv(1024))[2:-3]
+
+            # Store component type!
             self.type = read.split('.')[0]
+
             message = read.split('.')[1]
 
             if message == "CNCT":
@@ -39,36 +43,64 @@ class Component:
             self.status = "ERROR: Connection Timeout"
         except socket.error as e:
             self.status = f"Socket error: {e}"
-    
-    def origin_search(self):
-        # Origin search command (fix later)
-        command = f"SIMULATIONoTRB1.ORGN(0,0)"
-        self.sock.sendall(command.encode('utf-8'))
-        read = str(self.sock.recv(1024))[2:-3]
+
+    def send_and_read(self,command, buffer=1024):
+        self.sock.sendall(command.encode('utf-8')) 
+        read = str(self.sock.recv(buffer))[2:-3]
+        # TODO Cut the Component name. Maybe include it again for non-rorze.
         message = read.split('.')[1]
-        if message == "ORGN":
-            self.status = "Origin search..."
-        
-        # Wait for origin search to finish
+        self.status = "Reading data..."
+        # TODO Wait until information is read?
         try: 
-            self.sock.settimeout(120)
-            read = str(self.sock.recv(1024))[2:-3]
+            self.sock.settimeout(5)
+            read = str(self.sock.recv(buffer))[2:-3]
             message = read.split('.')[1]
         except socket.timeout:
-            self.status = "ERROR: Connection timeout"
+            self.status = "ERROR: Motion timeout"
         except socket.error as e:
             self.status = f"Socket error: {e}"
         
-        self.status = f"Origin search completed. Status {message}"
+        self.status = f"Output: {message}"
 
-class Rorze_LP(Component):
-    pass
+        return message
+    
+    def send_and_read_motion(self,command,buffer=1024):
+        self.sock.sendall(command.encode('utf-8'))
+        read = str(self.sock.recv(buffer))[2:-3]
+        message = read.split('.')[1]
+        self.status = "Component is in motion..."
+        # Wait until motion finishes
+        try: 
+            self.sock.settimeout(120)
+            read = str(self.sock.recv(buffer))[2:-3]
+            message = read.split('.')[1]
+        except socket.timeout:
+            self.status = "ERROR: Motion timeout"
+        except socket.error as e:
+            self.status = f"Socket error: {e}"
+        
+        self.status = f"Motion completed. {message}"
 
-class Rorze_PA(Component):
-    pass
+        return message
 
-class Rorze_RO(Component):
-    pass
+class Rorze(Component):
 
-class Sinfonia_LP(Component):
+    def __init__(self, ip, system, type):
+        self.ip = ip
+        self.system = system
+        self.type = type
+        self.status = "Initializing..."
+        self.display_name = f"Rorze {self.type}"
+
+    def read_data(self):
+        command = f"{self.type}.RTDT(0)"
+        message = self.send_and_read(command, buffer=2**21) #2 MiB should suffice
+        #self.status = message
+
+    def origin_search(self, p1=0, p2=0):
+        command = f"{self.type}.ORGN({p1},{p2})"
+        message = self.send_and_read_motion(command)
+        #self.status = f'Origin search completed. {message}'
+
+class Sinfonia(Component):
     pass
