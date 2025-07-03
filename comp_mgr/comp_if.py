@@ -30,7 +30,7 @@ class CompIF:
         return ip if result.returncode == 0 else None
 
     # Check which type of component is connected
-    def check_component_type(comp_info):
+    def check_component_type(comp_info: dict):
         component = Component(
             ip = comp_info["IP"],
             system = comp_info["system"],
@@ -45,7 +45,7 @@ class CompIF:
             
         # If rorze component is connected use a diffent class
         if any(p in component.type for p in ['TRB','ALN','STG']):
-            logger.info(f"Component type detected: Rorze")
+            logger.info(f"Component type detected: Rorze ({component.type})")
             return component.type
         else:
             logger.error(f"Unknown Component type {component.type}")

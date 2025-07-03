@@ -21,13 +21,13 @@ logging.basicConfig(
 class Menu:
 
     def __init__(self, clist: dict):
-        self.components = clist
+        self.buttons = clist
         logger.info("==================== PROGRAM START ====================")
 
     def init_button_list(self):
         self.button_list = []
-        for i in self.components.keys():
-            button = self.components[i]["IP"]+" "+i
+        for i in self.buttons.keys():
+            button = self.buttons[i]["IP"]+" "+str(i)
             self.button_list.append(button)
         # self.button_list.append('Configure all unconfigured')
         self.button_list.append('Testing')
@@ -80,11 +80,11 @@ class Menu:
                     stdscr.addstr(len(self.button_list) + 3, 2, f"Scanning for components...")
                     stdscr.refresh()
                     comp_if = CompIF()
-                    self.components = comp_if.discover()
+                    self.buttons = comp_if.discover()
                     self.init_button_list()
                 else:
-                    component = self.components[selected.split(" ")[1]]
-                    self.run_component_menu(stdscr,component)
+                    comp_info = self.buttons[selected.split(" ")[1]]
+                    self.run_component_menu(stdscr,comp_info)
                     # After returning, select current row
                     current_row = 0
 
@@ -109,17 +109,18 @@ class Menu:
 
     def run_component_menu(self, stdscr, comp_info: dict):
 
-        # Check component type
-        type = CompIF.check_component_type(comp_info)
+        # Check component type (to validate if IP matches expected component)
+        comp_type = CompIF.check_component_type(comp_info)
+        logger.debug(f"component.type={comp_type}")
 
-        if not any(p in type for p in ['TRB','ALN','STG']):
+        if not any(p in comp_type for p in ['TRB','ALN','STG']):
             raise Exception("Other components than Rorze have not been implemented yet")
 
         # Instantiate a Rorze component 
         component = Rorze(
             ip = comp_info["IP"],
             system = comp_info["system"],
-            type = comp_info["type"]
+            type = comp_type
         )
 
         # Start thread that updates component status in the background            

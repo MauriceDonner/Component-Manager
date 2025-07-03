@@ -59,8 +59,8 @@ class Component:
                 else:
                     self.status = f"Socket error: {e}"
                     logger.error(f"Socket error: {e}")
-            finally:
-                self.busy = False
+            # finally:
+            #     self.busy = False
 
     def send_and_read(self,command, buffer=1024):
 
@@ -130,19 +130,32 @@ class Rorze(Component):
         self.display_name = f"Rorze {self.type}"
         self.status = "Initializing..."
         logger.info(f"Initializing {self.display_name}")
+        self.name = self.read_name(type)
         self.lock = threading.Lock()
         self.busy = False
+    
+    def read_name(self, type: str):
+        """
+        Rorze components will have a prefix that contain type information.
+        This prefix has to have a character removed, such that commands can be sent.
+        Example: extended_type="eTRB0" -> type="TRB0"
+        """
+        if type == "SIMULATIONeTRB0":
+            name = type
+        else:
+            name = "o"+type[-4:]
+        return name
 
     def read_data(self):
-        command = f"{self.type}.RTDT(0)"
+        command = f"{self.name}.RTDT(0)"
         message = self.send_and_read(command, buffer=2**21) #2 MiB should suffice
 
     def origin_search(self, p1=0, p2=0):
-        command = f"{self.type}.ORGN({p1},{p2})"
+        command = f"{self.name}.ORGN({p1},{p2})"
         message = self.send_and_read_motion(command)
 
     def get_rotary_switch_value(self):
-        command = f"{self.type}.GTDT(3)"
+        command = f"{self.name}.GTDT(3)"
         message = self.send_and_read(command)  
         self.status = f"Rotary switch position: {message}"
 
