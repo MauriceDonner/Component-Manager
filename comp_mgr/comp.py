@@ -22,12 +22,6 @@ class Component:
         logger.info(f"Initializing {self.display_name}...")
         self.lock = threading.Lock()
         self.busy = False
-
-        # Check, whether the component has a default IP
-        if self.type in NETWORK["UNCONF"].keys():
-            self.defaultip = NETWORK["UNCONF"][self.type]
-        elif "Loadport" in self.type:
-            self.defaultip = NETWORK["UNCONF"]["Rorze LP"]
     
     def establish_connection(self,port=12100,retries=1):
         self.status = "Connecting..."
