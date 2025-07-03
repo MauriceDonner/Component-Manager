@@ -6,6 +6,7 @@ All Component data and methods is stored in these class instances
 import logging
 import socket
 import threading
+import time
 from comp_mgr.config import NETWORK
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ class Component:
         self.type = type
         self.display_name = self.type
         self.status = "Initializing..."
-        logger.info(f"Initializing {self.display_name}")
+        logger.info(f"Initializing {self.display_name}...")
         self.lock = threading.Lock()
         self.busy = False
 
@@ -28,45 +29,56 @@ class Component:
         elif "Loadport" in self.type:
             self.defaultip = NETWORK["UNCONF"]["Rorze LP"]
     
-    def establish_connection(self,port=12100):
+    def establish_connection(self,port=12100,retries=1):
         self.status = "Connecting..."
         logger.info(f"Connecting to {self.display_name}...")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(5)
-        try:
-            self.sock.connect((self.ip, port))
-            # TODO [2:-3] cuts the b' and \\r that is always sent with a rorze status
-            # what about other components?
-            read = str(self.sock.recv(1024))[2:-3]
 
-            # Store component type!
-            self.type = read.split('.')[0]
+        for i in range(retries+1):
 
-            message = read.split('.')[1]
+            try:
+                self.sock.connect((self.ip, port))
+                # TODO [2:-3] cuts the b' and \\r that is always sent with a rorze status
+                # what about other components?
+                read = str(self.sock.recv(1024))[2:-3]
 
-            if message == "CNCT":
-                self.status = f"{self.type} is connected"
-                logger.info(f"Connection to {self.display_name} successful")
+                # Store component type!
+                self.type = read.split('.')[0]
 
-        except socket.timeout:
-            self.status = "ERROR: Connection Timeout"
-            logger.error(f"Connection Timeout")
-            self.busy = True
-        except socket.error as e:
-            self.status = f"Socket error: {e}"
-            logger.error(f"Socket error: {e}")
-            self.busy = True
+                message = read.split('.')[1]
+
+                if message == "CNCT":
+                    self.status = f"{self.type} is connected"
+                    logger.info(f"Connection to {self.display_name} successful")
+                    break
+
+            except socket.timeout:
+                self.status = "ERROR: Connection Timeout"
+                logger.error(f"Connection Timeout")
+                self.busy = True
+            except socket.error as e:
+                self.busy = True
+                if i == 0:
+                    logger.warning(f"Connection attempt unsuccessful... Retrying {retries} more time")
+                    time.sleep(1)
+                else:
+                    self.status = f"Socket error: {e}"
+                    logger.error(f"Socket error: {e}")
+            finally:
+                self.busy = False
 
     def send_and_read(self,command, buffer=1024):
 
         with self.lock:
             self.busy = True
             self.sock.sendall(command.encode('utf-8')) 
-            logger.info(f"Sending: {command}")
+            logger.debug(f"Sending: {command}")
             read = str(self.sock.recv(buffer))[2:-3]
             # TODO Cut the Component name. Maybe include it again for non-rorze.
             message = read.split('.')[1]
             self.status = "Reading data..."
+            logger.debug(f"Reading data... {message}")
             # TODO Wait until information is read?
             try: 
                 self.sock.settimeout(5)
@@ -82,7 +94,7 @@ class Component:
                 self.busy = False
         
         self.status = f"Output: {message}"
-        logger.info(f"Data read from {self.display_name}: {message}")
+        logger.info(f"Response from {self.display_name}: - {message}")
 
         return message
     
@@ -91,11 +103,11 @@ class Component:
         with self.lock:
             self.busy = True
             self.sock.sendall(command.encode('utf-8'))
-            logger.info(f"Sending: {command}")
+            logger.debug(f"Sending: {command}")
             read = str(self.sock.recv(buffer))[2:-3]
             message = read.split('.')[1]
             self.status = "Component is in motion..."
-            logger.info(f"{self.display_name} is in motion...")
+            logger.debug(f"Component is in motion {message}")
             # Wait until motion finishes
             try: 
                 self.sock.settimeout(120)
@@ -134,6 +146,11 @@ class Rorze(Component):
     def origin_search(self, p1=0, p2=0):
         command = f"{self.type}.ORGN({p1},{p2})"
         message = self.send_and_read_motion(command)
+
+    def get_rotary_switch_value(self):
+        command = f"{self.type}.GTDT(3)"
+        message = self.send_and_read(command)  
+        self.status = f"Rotary switch position: {message}"
 
 class Sinfonia(Component):
     pass

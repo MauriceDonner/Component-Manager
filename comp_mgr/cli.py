@@ -13,7 +13,7 @@ from testing.methods import tests
 os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
     filename="logs/component_manager.log",
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
@@ -134,7 +134,7 @@ class Menu:
 
         # Start Menu (update every 500ms)
         button_list_limited = ["Back", "Quit"]
-        buttons = ["Origin", "Read"]
+        buttons = ["Origin", "Read", "Rotary Switch"]
         button_list = buttons + button_list_limited
         current_row = 0
         stdscr.timeout(500)
@@ -166,6 +166,9 @@ class Menu:
                     connection_thread.start()
                 elif selected == 'Read':
                     connection_thread = threading.Thread(target=component.read_data, daemon=True)
+                    connection_thread.start()
+                elif selected == 'Rotary Switch':
+                    connection_thread = threading.Thread(target=component.get_rotary_switch_value, daemon=True)
                     connection_thread.start()
 
             # Also update button list right after a command is started
