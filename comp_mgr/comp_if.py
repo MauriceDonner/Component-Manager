@@ -1,5 +1,5 @@
 """
-Main functional module.
+Main interface between software and component.
 
 Contains utility classes and functions
 """
@@ -27,14 +27,6 @@ class CompIF:
         result = subprocess.run(command, stdout=subprocess.DEVNULL)
         return ip if result.returncode == 0 else None
 
-    # TODO testing
-    def start_background_connections(self, component_list: list):
-        for component in component_list:
-            ip = component.ip
-            t = threading.Thread(target=self.establish_connection(ip), args=(ip),daemon=True)
-            t.start()
-            self.connection_threads.append(t)
-    
     # Check which type of component is connected
     def check_component_type(comp_info):
         component = Component(
