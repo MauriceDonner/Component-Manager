@@ -2,17 +2,27 @@
 CLI interface for Component Manager project.
 """
 import curses
+import logging
+import os
 import sys
 import threading
-from comp_mgr.config import MESSAGES
-from comp_mgr.methods import CompIF
+from comp_mgr.comp_if import CompIF
 from comp_mgr.comp import *
 from testing.methods import tests
+
+os.makedirs("logs", exist_ok=True)
+logging.basicConfig(
+    filename="logs/component_manager.log",
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
 
 class Menu:
 
     def __init__(self, clist: dict):
         self.components = clist
+        logger.info("===== PROGRAM START =====")
 
     def init_button_list(self):
         self.button_list = []
@@ -123,14 +133,23 @@ class Menu:
         connection_thread.start()
 
         # Start Menu (update every 500ms)
-        button_list = ["Origin", "Read", "Back", "Quit"]
+        button_list_limited = ["Back", "Quit"]
+        buttons = ["Origin", "Read"]
+        button_list = buttons + button_list_limited
         current_row = 0
-        stdscr.timeout(1000)
+        stdscr.timeout(500)
 
         while True:
+
             self.draw_component_menu(stdscr, component, current_row, button_list)
+
             key = stdscr.getch()
             if key == -1:
+                # Update button list and continue
+                if component.busy:
+                    button_list = button_list_limited
+                else: 
+                    button_list = buttons + button_list_limited
                 continue
             elif key == curses.KEY_UP:
                 current_row = (current_row - 1) % len(button_list)
@@ -148,6 +167,12 @@ class Menu:
                 elif selected == 'Read':
                     connection_thread = threading.Thread(target=component.read_data, daemon=True)
                     connection_thread.start()
+
+            # Also update button list right after a command is started
+            if component.busy:
+                button_list = button_list_limited
+            else: 
+                button_list = buttons + button_list_limited
 
 
     def draw_testing_menu(self, stdscr, current_row, button_list):
