@@ -22,7 +22,7 @@ class Menu:
 
     def __init__(self, clist: dict):
         self.components = clist
-        logger.info("===== PROGRAM START =====")
+        logger.info("==================== PROGRAM START ====================")
 
     def init_button_list(self):
         self.button_list = []

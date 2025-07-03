@@ -5,11 +5,13 @@ Contains utility classes and functions
 """
 
 import concurrent.futures
+import logging
 import subprocess
-import threading
 import json # Debugging
 from comp_mgr.config import NETWORK
 from comp_mgr.comp import Component
+
+logger = logging.getLogger(__name__)
 
 class CompIF:
 
@@ -38,12 +40,15 @@ class CompIF:
         try:
             component.establish_connection() # Modifies its type
         except Exception as e:
+            logger.error(f"Failed to establish connection to Component {component.type}")
             raise Exception(f"Failed to establish connection to Component {component.type}: {e}")
             
         # If rorze component is connected use a diffent class
         if any(p in component.type for p in ['TRB','ALN','STG']):
+            logger.info(f"Component type detected: Rorze")
             return component.type
         else:
+            logger.error(f"Unknown Component type {component.type}")
             raise Exception(f"Unkown Component type {component.type}")
 
     # Discover all components in the relevant sub nets

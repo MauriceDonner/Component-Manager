@@ -62,11 +62,11 @@ class Component:
         with self.lock:
             self.busy = True
             self.sock.sendall(command.encode('utf-8')) 
+            logger.info(f"Sending: {command}")
             read = str(self.sock.recv(buffer))[2:-3]
             # TODO Cut the Component name. Maybe include it again for non-rorze.
             message = read.split('.')[1]
             self.status = "Reading data..."
-            logger.info(f"Reading data from {self.display_name}")
             # TODO Wait until information is read?
             try: 
                 self.sock.settimeout(5)
@@ -91,6 +91,7 @@ class Component:
         with self.lock:
             self.busy = True
             self.sock.sendall(command.encode('utf-8'))
+            logger.info(f"Sending: {command}")
             read = str(self.sock.recv(buffer))[2:-3]
             message = read.split('.')[1]
             self.status = "Component is in motion..."
