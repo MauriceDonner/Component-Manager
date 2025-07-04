@@ -16,9 +16,13 @@ class Component:
 
     def __init__(self, ip, system, type):
         self.ip = ip
+        # System (e.g. example 'WMC')
         self.system = system
+        # Component type (e.g. 'Robot')
         self.type = type
-        self.display_name = self.type
+        # Display name for CLI (e.g. 'Robot')
+        self.display_name = type
+
         self.status = "Initializing..."
         logger.info(f"Initializing {self.display_name}...")
         self.lock = threading.Lock()
@@ -102,7 +106,7 @@ class Component:
             read = str(self.sock.recv(buffer))[2:-3]
             message = read.split('.')[1]
             self.status = "Component is in motion..."
-            logger.debug(f"Component is in motion {message}")
+            logger.debug(f"Component is in motion... {message}")
             # Wait until motion finishes
             try: 
                 self.sock.settimeout(120)
@@ -118,7 +122,7 @@ class Component:
                 self.busy = False
             
             self.status = f"Motion completed. {message}"
-            logger.info(f"Motion completed. Status: {message}")
+            logger.info(f"Motion completed. {message}")
 
         return message
 
@@ -126,12 +130,17 @@ class Rorze(Component):
 
     def __init__(self, ip, system, type):
         self.ip = ip
+        # System (e.g. example 'WMC')
         self.system = system
+        # Component type (e.g. 'eTRB0')
         self.type = type
+        # Display name for CLI (e.g. 'Rorze eTRB0')
         self.display_name = f"Rorze {type}"
-        self.status = "Initializing..."
-        logger.info(f"Initializing {self.display_name}")
+        # Name of the component in Rorze terms (e.g. 'TRB0')
         self.name = self.read_name(type)
+
+        self.status = "Initializing..."
+        logger.info(f"Initializing {self.display_name}...")
         self.lock = threading.Lock()
         self.busy = False
     
@@ -150,6 +159,7 @@ class Rorze(Component):
     def origin_search(self, p1: int=0, p2: int=0):
         command = f"{self.name}.ORGN({p1},{p2})"
         message = self.send_and_read_motion(command)
+        self.status = f"Origin search completed: {message}"
 
     def get_rotary_switch_value(self):
         command = f"{self.name}.GTDT(3)"
