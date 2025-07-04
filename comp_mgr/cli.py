@@ -135,7 +135,7 @@ class Menu:
 
         # Start Menu (update every 500ms)
         button_list_limited = ["Back", "Quit"]
-        buttons = ["Origin", "Read Data", "Rotary Switch"]
+        buttons = ["Get Status", "Read Data", "Rotary Switch"]
         button_list = buttons + button_list_limited
         current_row = 0
         stdscr.timeout(500)
@@ -162,6 +162,9 @@ class Menu:
                     break
                 elif selected == 'Quit':
                     sys.exit(0)
+                elif selected == 'Get Status':
+                    connection_thread = threading.Thread(target=component.get_status, daemon=True)
+                    connection_thread.start()
                 elif selected == 'Origin':
                     connection_thread = threading.Thread(target=component.origin_search, daemon=True)
                     connection_thread.start()

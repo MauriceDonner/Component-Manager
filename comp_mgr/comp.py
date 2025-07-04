@@ -41,6 +41,7 @@ class Component:
                 # TODO [2:-3] cuts the b' and \\r that is always sent with a rorze status
                 # what about other components?
                 read = str(self.sock.recv(1024))[2:-3]
+                logger.debug(f"Recieved: {read}")
 
                 # Store component type!
                 self.type = read.split('.')[0]
@@ -66,26 +67,43 @@ class Component:
                     logger.error(f"Socket error: {e}")
             # finally:
             #     self.busy = False
+    
+    def recv_until_newline(self, timeout=0.1):
+        self.sock.settimeout(timeout)
+        data = b""
+        while True:
+            chunk = self.sock.recv(1024)
+            if not chunk:
+                break  # connection closed
+            data += chunk
+            if (b"\r" in chunk):
+                logger.debug('Escape sequence found')
+                break
+        return data.decode('utf-8').strip()
 
     def send_and_read(self, command: str, buffer: int=1024) -> str:
 
+        # Add a \r at the end of a command!
+        command = f"{command}\r"
+
         with self.lock:
             self.busy = True
-            self.sock.sendall(command.encode('utf-8')) 
             logger.debug(f"Sending: {command}")
-            read = str(self.sock.recv(buffer))[2:-3]
-            # TODO raise Exception when Acknowledge fails - such that the program doesn't crash
-            # TODO Cut the Component name. Maybe include it again for non-rorze.
-            message = read.split('.')[1]
+            self.sock.sendall(command.encode('utf-8')) 
             self.status = "Reading data..."
-            logger.debug(f"Reading data... {message}")
             try: 
-                self.sock.settimeout(5)
-                read = str(self.sock.recv(buffer))[2:-3]
-                message = read.split('.')[1]
+                read = self.recv_until_newline()
+                logger.debug(f"Receive: {read}")
+                # TODO Cut the Component name. Maybe include it again for non-rorze.
+                message = read #.split('.')[1]
+                # Simulation always treats it like motion command
+                if "SIMULATION" in self.type:
+                    read = self.sock.recv(1024)
+                    logger.debug(f"Receive: {read}")
+                    message = read 
             except socket.timeout:
-                self.status = "ERROR: Motion timeout"
-                logger.error(f"Motion timeout")
+                self.status = "ERROR: Timeout"
+                logger.error(f"Timeout")
             except socket.error as e:
                 self.status = f"Socket error: {e}"
                 logger.error(f"Socket error: {e}")
@@ -93,25 +111,24 @@ class Component:
                 self.busy = False
         
         self.status = f"Output: {message}"
-        logger.info(f"Response from {self.display_name}: - {message}")
 
         return message
     
     def send_and_read_motion(self,command,buffer=1024):
-
+        
         with self.lock: # TODO THIS SHOULD NOT BLOCKING -- EMO NEEDS TO BE POSSIBLE
             self.busy = True
             self.sock.sendall(command.encode('utf-8'))
             logger.debug(f"Sending: {command}")
             read = str(self.sock.recv(buffer))[2:-3]
-            message = read.split('.')[1]
+            message = read #.split('.')[1]
             self.status = "Component is in motion..."
             logger.debug(f"Component is in motion... {message}")
             # Wait until motion finishes
             try: 
                 self.sock.settimeout(120)
                 read = str(self.sock.recv(buffer))[2:-3]
-                message = read.split('.')[1]
+                message = read #.split('.')[1]
             except socket.timeout:
                 self.status = "ERROR: Motion timeout"
                 logger.error(f"Motion timeout")
@@ -162,9 +179,14 @@ class Rorze(Component):
         self.status = f"Origin search completed: {message}"
 
     def get_rotary_switch_value(self):
-        command = f"{self.name}.GTDT(3)"
-        message = self.send_and_read(command)  
+        command = f"{self.name}.GTDT[3]"
+        message = self.send_and_read(command).split(":")[1]
         self.status = f"Rotary switch position: {message}"
+
+    def get_status(self):
+        command = f"{self.name}.STAT"
+        message = self.send_and_read(command)
+        self.status = f"{message}"
 
     def acquire_system_data(self):
         """
@@ -195,12 +217,15 @@ class Rorze(Component):
             
         # Get Own IP address
         command = f"{self.name}.GTDT[1]"
-        system_data["STDT[1]"] = self.send_and_read(command)
+        message = self.send_and_read(command).split(":")[1]
+        system_data["STDT[1]"] = message
 
         # Get remaining system data
         for field in data_fields:
             command = f"{self.name}.{field}.GTDT"
-            system_data[field] = self.send_and_read(command, buffer=2**21) # 2MiB should always suffice
+            message = self.send_and_read(command, buffer=2**21) # 2MiB should always suffice
+            system_data[field] = message.split(':')[1]
+            self.status = 'Data saved to ./testing/System_data.json'
 
         with open('testing/System_data.json', 'w') as out:
             json.dump(system_data, out, indent=4)
