@@ -4,6 +4,7 @@ Component Module
 All Component data and methods is stored in these class instances
 """
 import logging
+import json
 import socket
 import threading
 import time
@@ -62,18 +63,18 @@ class Component:
             # finally:
             #     self.busy = False
 
-    def send_and_read(self,command, buffer=1024):
+    def send_and_read(self, command: str, buffer: int=1024) -> str:
 
         with self.lock:
             self.busy = True
             self.sock.sendall(command.encode('utf-8')) 
             logger.debug(f"Sending: {command}")
             read = str(self.sock.recv(buffer))[2:-3]
+            # TODO raise Exception when Acknowledge fails - such that the program doesn't crash
             # TODO Cut the Component name. Maybe include it again for non-rorze.
             message = read.split('.')[1]
             self.status = "Reading data..."
             logger.debug(f"Reading data... {message}")
-            # TODO Wait until information is read?
             try: 
                 self.sock.settimeout(5)
                 read = str(self.sock.recv(buffer))[2:-3]
@@ -94,7 +95,7 @@ class Component:
     
     def send_and_read_motion(self,command,buffer=1024):
 
-        with self.lock:
+        with self.lock: # TODO THIS SHOULD NOT BLOCKING -- EMO NEEDS TO BE POSSIBLE
             self.busy = True
             self.sock.sendall(command.encode('utf-8'))
             logger.debug(f"Sending: {command}")
@@ -127,7 +128,7 @@ class Rorze(Component):
         self.ip = ip
         self.system = system
         self.type = type
-        self.display_name = f"Rorze {self.type}"
+        self.display_name = f"Rorze {type}"
         self.status = "Initializing..."
         logger.info(f"Initializing {self.display_name}")
         self.name = self.read_name(type)
@@ -146,11 +147,7 @@ class Rorze(Component):
             name = "o"+type[-4:]
         return name
 
-    def read_data(self):
-        command = f"{self.name}.RTDT(0)"
-        message = self.send_and_read(command, buffer=2**21) #2 MiB should suffice
-
-    def origin_search(self, p1=0, p2=0):
+    def origin_search(self, p1: int=0, p2: int=0):
         command = f"{self.name}.ORGN({p1},{p2})"
         message = self.send_and_read_motion(command)
 
@@ -158,6 +155,45 @@ class Rorze(Component):
         command = f"{self.name}.GTDT(3)"
         message = self.send_and_read(command)  
         self.status = f"Rotary switch position: {message}"
+
+    def acquire_system_data(self):
+        """
+        This serves the same purpose as the 'Read Data' button in the
+        Rorze maintenance software. It is slightly different for each component.
+        """
+        # Save data to a dictionary
+        system_data = {}
+
+        # Loadport Backup
+        if ("STG" in self.type) or ("SIMULATION" in self.type):
+            data_fields = [
+                "DEQU",
+                "DRES",
+                "DRCI",
+                "DRCS",
+                "DMNT",
+                "YAX1",
+                "ZAX1",
+                "DSTG",
+                "DMPR",
+                "DPRM",
+                "DCST",
+                "DE84"
+                ]
+        else:
+            raise Exception(f"Data acquisition not implemented for {self.type}")
+            
+        # Get Own IP address
+        command = f"{self.name}.GTDT[1]"
+        system_data["STDT[1]"] = self.send_and_read(command)
+
+        # Get remaining system data
+        for field in data_fields:
+            command = f"{self.name}.{field}.GTDT"
+            system_data[field] = self.send_and_read(command, buffer=2**21) # 2MiB should always suffice
+
+        with open('testing/System_data.json', 'w') as out:
+            json.dump(system_data, out, indent=4)
 
 class Sinfonia(Component):
     pass

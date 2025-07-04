@@ -135,7 +135,7 @@ class Menu:
 
         # Start Menu (update every 500ms)
         button_list_limited = ["Back", "Quit"]
-        buttons = ["Origin", "Read", "Rotary Switch"]
+        buttons = ["Origin", "Read Data", "Rotary Switch"]
         button_list = buttons + button_list_limited
         current_row = 0
         stdscr.timeout(500)
@@ -165,8 +165,8 @@ class Menu:
                 elif selected == 'Origin':
                     connection_thread = threading.Thread(target=component.origin_search, daemon=True)
                     connection_thread.start()
-                elif selected == 'Read':
-                    connection_thread = threading.Thread(target=component.read_data, daemon=True)
+                elif selected == 'Read Data':
+                    connection_thread = threading.Thread(target=component.acquire_system_data, daemon=True)
                     connection_thread.start()
                 elif selected == 'Rotary Switch':
                     connection_thread = threading.Thread(target=component.get_rotary_switch_value, daemon=True)
