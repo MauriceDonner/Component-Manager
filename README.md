@@ -28,15 +28,15 @@ The type of components and their configurations can be found in the list below:
     - [ ] Read firmware version 
     - [ ] Backup original settings
     - [x] Read rotary switch value
-    - [ ] Set settings for specific Body No
-            - Body No
-            - Auto Output
-            - TCP/IP
-            - Host IP Adr.
-            - Log Host
-            - Own IP
-            - Presence led
-            - i/o
+    - [ ] Set settings for specific Body No.
+        - Body No
+        - Auto Output
+        - TCP/IP
+        - Host IP Adr.
+        - Log Host
+        - Own IP
+        - Presence led
+        - i/o
     - [ ] Backup new settings
     - [ ] All axis origin search
     - [ ] (Ask user for Load/Endurance test)
