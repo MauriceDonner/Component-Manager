@@ -23,12 +23,12 @@ Alternatively, single components can be selected and configured individually.
 The type of components and their configurations can be found in the list below:
 
 - Loadport
-    - [ ] IP setting for either SemDex or WMC system (LP number needs to be kept in mind)
-    - [ ] Controller ID check for Rorze Loadports
-    - [ ] Rorze Loadport checklist items
-        - [ ] Firmware version
-        - [ ] Backup original settings
-        - [ ] Maintenance software settings
+    - [ ] Find serial Number
+    - [ ] Find Loadport type
+    - [ ] Read firmware version 
+    - [ ] Backup original settings
+    - [x] Read rotary switch value
+    - [ ] Set settings for specific Body No
             - Body No
             - Auto Output
             - TCP/IP
@@ -37,46 +37,46 @@ The type of components and their configurations can be found in the list below:
             - Own IP
             - Presence led
             - i/o
-        - [ ] Backup new settings
-        - [ ] Origin search and whether it is successful
-- Robot
-    - [ ] IP setting for either SemDex or WMC system
-    - [ ] Controller ID check
-    - [ ] No Interpolation setting change
-    - [ ] Checklist items
-        - [ ] Firmware version
-        - [ ] Backup original settings
-        - [ ] Maintenance software settings
-            - Host IP Address
-            - Host Port
-            - Log Host
-            - Own IP Address
-        - [ ] Backup new settings
-        - [ ] Origin search and whether it is successful
-- Teaching Pendant
-    - Only check for connection, settings are changed within Pendant
-- Lineartrack
-    - [ ] IP setting for either SemDex or WMC system
-    - [ ] Controller ID check
-    - [ ] Backup original settings
-    - [ ] Maintenance Software settings
-        - Host IP Address
-        - Host Port
-        - Log Host
     - [ ] Backup new settings
+    - [ ] All axis origin search
+    - [ ] (Ask user for Load/Endurance test)
 - Prealigner
-    - [ ] IP setting for either SemDex or WMC system
-    - [ ] Controller ID check
+    - [ ] Find serial number
+    - [ ] Find Prealigner type
+    - [ ] Read firmware version
     - [ ] Backup original settings
-    - [ ] Firmware version
-    - [ ] Maintenance Software settings
+    - [ ] Set settings
         - Host IP Address
         - Host Port
         - Log Host
         - Host Interface
         - Body No
     - [ ] Backup new settings
-    - [ ] Origin search and whether it is successful
+    - [ ] All axis origin search
+    - [ ] Ask user for Endurance test
+- Lineartrack  
+    - [ ] Find serial number
+    - [ ] Backup original settings
+    - [ ] Set settings
+        - Host IP Address
+        - Host Port
+        - Log Host
+    - [ ] Backup new settings
+- Robot
+    - [ ] Find serial number
+    - [ ] Find robot type
+    - [ ] Read firmware version
+    - [ ] Backup original settings
+    - [ ] Set settings
+        - Host IP Address
+        - Host Port
+        - Log Host
+        - Own IP Address
+        - No Interpolation
+    - [ ] Backup new settings
+    - [ ] All axis origin search
+- Teaching Pendant
+    - Only check for connection, settings are changed within Pendant
 - Log Host
     - Only check for connection. No settings are changed.
 
