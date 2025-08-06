@@ -20,23 +20,19 @@ logging.basicConfig(
 
 class Menu:
 
-    def __init__(self, clist: dict):
-        self.buttons = clist
+    def __init__(self, ip_list: list):
+        self.ip_list = ip_list
         logger.info("==================== PROGRAM START ====================")
 
     def init_button_list(self):
-        self.button_list = []
-        for i in self.buttons.keys():
-            button = self.buttons[i]["IP"]+" "+str(i)
-            self.button_list.append(button)
-        # self.button_list.append('Configure all unconfigured')
+        self.button_list = self.ip_list
+        # self.button_list.append('Configure all unconfigured') # Zukunftsmusik
         self.button_list.append('Testing')
         self.button_list.append('Retry connection')
         self.button_list.append('Quit')
 
     def draw_main_menu(self, stdscr, current_row):
         stdscr.clear()
-        self.init_button_list()
         for i, row in enumerate(self.button_list):
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))
@@ -53,7 +49,6 @@ class Menu:
         # Disable cursor and enable keypad
         curses.curs_set(0)
         stdscr.keypad(True)
-
         # Choose Colors
         curses.start_color()
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
@@ -70,17 +65,13 @@ class Menu:
                 selected = self.button_list[current_row]
                 if selected == 'Quit':
                     sys.exit(0)
-                elif selected == 'Configure all unconfigured':
-                    stdscr.addstr(len(self.button_list) + 3, 2, f"Configuration starts...")
-                    stdscr.refresh()
-                    stdscr.getch()
                 elif selected == 'Testing':
                     self.run_testing_menu(stdscr, tests(stdscr))
                 elif selected == 'Retry connection':
                     stdscr.addstr(len(self.button_list) + 3, 2, f"Scanning for components...")
                     stdscr.refresh()
                     comp_if = CompIF()
-                    self.buttons = comp_if.discover()
+                    self.ip_list = comp_if.discover()
                     self.init_button_list()
                 else:
                     comp_info = self.buttons[selected.split(" ")[1]]
@@ -224,10 +215,10 @@ def main():
     """
 
     Components = CompIF(debug=1)
-    clist = Components.discover()
+    ip_list = Components.discover()
 
     # TODO testing, what argument goes here?
     # Components.start_background_connections()
 
-    menu = Menu(clist)
+    menu = Menu(ip_list)
     curses.wrapper(menu.run_main_menu)

@@ -6,36 +6,36 @@ Contains all configuration data, such as static IPs or configuration parameters 
 
 NETWORK = {
     "SEMDEX": {
-        "Robot":       "192.168.0.1",
-        "Pendant":     "192.168.0.2",
-        "Lineartrack": "192.168.0.3",
-        "Loadport_1":  "192.168.0.21",
-        "Loadport_2":  "192.168.0.22",
-        "Loadport_3":  "192.168.0.23",
-        "Prealigner":  "192.168.0.151",
-        "WID_Reader":  "192.168.0.161",
+        "Robot":         "192.168.0.1",
+        "Pendant":       "192.168.0.2",
+        "Lineartrack":   "192.168.0.3",
+        "Loadport_1":    "192.168.0.21",
+        "Loadport_2":    "192.168.0.22",
+        "Loadport_3":    "192.168.0.23",
+        "Prealigner":    "192.168.0.151",
+        "WID_Reader":    "192.168.0.161",
     },
     "WMC": {
-        "Reolink_Han": "192.168.30.4",
-        "Reolink_Met": "192.168.30.5",
-        "Pendant":     "192.168.30.6",
-        "Robot":       "192.168.30.20",
-        "Lineartrack": "192.168.30.21",
-        "WID_Reader":  "192.168.30.61",
-        "Prealigner":  "192.168.30.70",
-        "Loadport_1":  "192.168.30.110",
-        "Loadport_2":  "192.168.30.120",
-        "Loadport_3":  "192.168.30.130",
-        "ID_Reader_1": "192.168.30.111",
-        "ID_Reader_2": "192.168.30.112",
-        "ID_Reader_3": "192.168.30.113",
+        "Cam_Handling":  "192.168.30.4",
+        "Cam_Metrology": "192.168.30.5",
+        "Pendant":       "192.168.30.6",
+        "Robot":         "192.168.30.20",
+        "Lineartrack":   "192.168.30.21",
+        "WID_Reader":    "192.168.30.61",
+        "Prealigner":    "192.168.30.70",
+        "Loadport_1":    "192.168.30.110",
+        "Loadport_2":    "192.168.30.120",
+        "Loadport_3":    "192.168.30.130",
+        "CID_Reader_1":  "192.168.30.111",
+        "CID_Reader_2":  "192.168.30.112",
+        "CID_Reader_3":  "192.168.30.113",
     },
     "UNCONF": {
-        "Robot":       "172.20.9.150",
-        "Lineartrack": "172.20.9.140",
-        "Loadport":    "172.20.9.100",
-        "Prealigner":  "172.20.9.160",
-        "Simulation":  "127.0.0.1"
+        "Robot":         "172.20.9.150",
+        "Lineartrack":   "172.20.9.140",
+        "Loadport":      "172.20.9.100",
+        "Prealigner":    "172.20.9.160",
+        "Simulation":    "127.0.0.1"
     }
 }
 
@@ -57,7 +57,6 @@ OTHER_IPS = {
     "192.168.60.57": "Reolink Camera",
     "192.168.60.58": "Reolink Camera",
     "192.168.60.59": "Reolink Camera",
-
 }
 
 CANCEL_CODES = {
