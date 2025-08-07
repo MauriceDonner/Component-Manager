@@ -101,25 +101,35 @@ class CompIF:
         for system, components in NETWORK.items():
             for component, ip in components.items():
                 if ip == target_ip:
-                    return {"IP": ip, "System": system, "Type": component}
+                    ip_info = {"IP": ip, "System": system, "Type": component}
+                    logger.info(f"Received ip info: {ip_info}")
+                    return ip_info
         for ip, description in OTHER_IPS.items():
             if ip == target_ip:
-                return {"IP": ip, "System": "other", "Type": description}
-        return {"IP": ip, "System": None, "Type": "Unknown IP"}
+                ip_info = {"IP": ip, "System": None, "Type": description}
+                logger.info(f"Received ip info: {ip_info}")
+                return ip_info
+        
+        ip_info = {"IP": ip, "System": None, "Type": "Unknown IP"}
+        logger.info(f"Received ip info: {ip_info}")
+        return ip_info
 
     def get_component_info(self, ip: str, port:int=12100) -> dict:
         # Check, whether the ip corresponds to an actual component
         component_info = self.get_ip_info(ip)
         if component_info["Type"] == "Unknown IP":
-            return {"IP": ip, "System": None, "Type": "Unknown IP", "Name": None, "SN": None}
+            component_info["Name"] = None
+            component_info["SN"] = None
+            logger.info(f"Received component info: {component_info}")
+            return component_info
 
         # TODO: Add check, whether it can be connected to (aka only connect to robot, PA, or Loadport)
 
         # If its a component, find out which type
         logger.info(f"Connecting to {ip}...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5)
-        retries = 1
+        sock.settimeout(3)
+        retries = 0
 
         for i in range(retries+1):
 
@@ -136,11 +146,13 @@ class CompIF:
                     serial_number = self.send_and_read_rorze(sock,sn_command)
                     component_info["Name"] = short_name
                     component_info["SN"] = serial_number
+                    logger.info(f"Received component info: {component_info}")
                     return component_info
 
                 else: # TODO Add more components here
                     component_info["Name"] = None
                     component_info["SN"] = None
+                    logger.info(f"Received component info: {component_info}")
                     return component_info
 
             except socket.timeout:
@@ -149,3 +161,9 @@ class CompIF:
             except socket.error as e:
                 logger.warning(f"Connection attempt to {ip} unsuccessful... Retrying {retries-i} more times.")
                 time.sleep(1)
+
+        # If no connection can be established, return empty info
+        component_info["Name"] = None
+        component_info["SN"] = None
+        logger.info(f"Received component info: {component_info}")
+        return component_info

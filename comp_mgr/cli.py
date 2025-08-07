@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import threading
+import time
 from comp_mgr.comp_if import CompIF
 from comp_mgr.comp import *
 from testing.methods import tests
@@ -21,39 +22,73 @@ logging.basicConfig(
 class Menu:
 
     def __init__(self, ip_list: list):
-        self.ip_list = ip_list
+        self.ip_list = ip_list.copy()
+        self.buttons = {ip: "[...loading]" for ip in ip_list}
         logger.info("==================== PROGRAM START ====================")
+        for i in ip_list:
+            logger.info(f"Found IP: {i}")
 
     def init_button_list(self):
-        self.button_list = self.ip_list
-        # self.button_list.append('Configure all unconfigured') # Zukunftsmusik
+        self.button_list = self.ip_list.copy()
         self.button_list.append('Testing')
         self.button_list.append('Retry connection')
         self.button_list.append('Quit')
 
+    def update_main_buttons(self) -> None:
+        comp_if = CompIF()
+
+        def update_button(ip: str) -> None:
+            try:
+                component_info = comp_if.get_component_info(ip)
+                system = component_info['System']
+                type = component_info['Type']
+                name = component_info['Name']
+                sn = component_info['SN']
+                if name:
+                    info = f"{system} {type} {name} {sn}"
+                # If no name is assigned - show which system the ip is configured for
+                elif system:
+                    info = f"{system} {type}"
+                # If no system is assigned - only show component type
+                elif type:
+                    info = type
+                else:
+                    info = "[unidentified]"
+                self.buttons[ip] = info
+            except Exception as e:
+                self.buttons[ip] = f"[error: {e}]"
+
+        for ip in self.ip_list:
+            # thread = threading.thread(target=update_button, args=(ip,),daemon=True).start()
+            time.sleep(2)
+            update_button(ip)
+
     def draw_main_menu(self, stdscr, current_row):
         stdscr.clear()
         for i, row in enumerate(self.button_list):
+            display_text = row
+            if row in self.buttons:
+                display_text += f" → {self.buttons[row]}"
+
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))
-                stdscr.addstr(i + 2, 2, row)
+                stdscr.addstr(i + 2, 2, display_text[:curses.COLS - 4])
                 stdscr.attroff(curses.color_pair(1))
             else:
-                stdscr.addstr(i + 2, 2, row)
+                stdscr.addstr(i + 2, 2, display_text[:curses.COLS - 4])
         stdscr.refresh()
 
-    def run_main_menu(self,stdscr):
-
+    def run_main_menu(self, stdscr):
         self.init_button_list()
-
-        # Disable cursor and enable keypad
-        curses.curs_set(0)
+        curses.curs_set(0) # Disable cursor and enable keypad
         stdscr.keypad(True)
-        # Choose Colors
         curses.start_color()
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
-
         current_row = 0
+        stdscr.timeout(500)
+
+        threading.Thread(target=self.update_main_buttons, daemon=True).start()
+
         while True:
             self.draw_main_menu(stdscr, current_row)
             key = stdscr.getch()
@@ -72,12 +107,13 @@ class Menu:
                     stdscr.refresh()
                     comp_if = CompIF()
                     self.ip_list = comp_if.discover()
+                    self.buttons = {ip: "[...loading]" for ip in self.ip_list}
                     self.init_button_list()
+                    threading.Thread(target=self.update_main_buttons, daemon=True).start()
                 else:
                     comp_info = self.buttons[selected.split(" ")[1]]
-                    self.run_component_menu(stdscr,comp_info)
-                    # After returning, select current row
-                    current_row = 0
+                    self.run_component_menu(stdscr, comp_info)
+                    current_row = 0 # After returning, select current row
 
     def draw_component_menu(self, stdscr, component: Component, current_row, button_list):
         stdscr.clear()
@@ -114,17 +150,6 @@ class Menu:
             type = comp_type
         )
 
-        # Start thread that updates component status in the background            
-        def update_status():
-            try:
-                component.establish_connection()
-            except Exception as e:
-                component.status = f'Error: {e}'
-
-        connection_thread = threading.Thread(target=update_status, daemon=True)
-        connection_thread.start()
-
-        # Start Menu (update every 500ms)
         button_list_limited = ["Back", "Quit"]
         buttons = ["Get Status", "Read Data", "Rotary Switch"]
         button_list = buttons + button_list_limited
@@ -132,51 +157,36 @@ class Menu:
         stdscr.timeout(500)
 
         while True:
-
             self.draw_component_menu(stdscr, component, current_row, button_list)
-
             key = stdscr.getch()
             if key == -1:
-                # Update button list and continue
-                if component.busy:
-                    button_list = button_list_limited
-                else: 
-                    button_list = buttons + button_list_limited
+                button_list = button_list_limited if component.busy else buttons + button_list_limited
                 continue
             elif key == curses.KEY_UP:
                 current_row = (current_row - 1) % len(button_list)
             elif key == curses.KEY_DOWN:
                 current_row = (current_row + 1) % len(button_list)
-            elif key == ord('\n'):  # Enter key
+            elif key == ord('\n'):
                 selected = button_list[current_row]
                 if selected == 'Back':
                     break
                 elif selected == 'Quit':
                     sys.exit(0)
                 elif selected == 'Get Status':
-                    connection_thread = threading.Thread(target=component.get_status, daemon=True)
-                    connection_thread.start()
+                    threading.Thread(target=component.get_status, daemon=True).start()
                 elif selected == 'Origin':
-                    connection_thread = threading.Thread(target=component.origin_search, daemon=True)
-                    connection_thread.start()
+                    threading.Thread(target=component.origin_search, daemon=True).start()
                 elif selected == 'Read Data':
-                    connection_thread = threading.Thread(target=component.acquire_system_data, daemon=True)
-                    connection_thread.start()
+                    threading.Thread(target=component.acquire_system_data, daemon=True).start()
                 elif selected == 'Rotary Switch':
-                    connection_thread = threading.Thread(target=component.get_rotary_switch_value, daemon=True)
-                    connection_thread.start()
+                    threading.Thread(target=component.get_rotary_switch_value, daemon=True).start()
 
             # Also update button list right after a command is started
-            if component.busy:
-                button_list = button_list_limited
-            else: 
-                button_list = buttons + button_list_limited
-
+            button_list = button_list_limited if component.busy else buttons + button_list_limited
 
     def draw_testing_menu(self, stdscr, current_row, button_list):
         stdscr.clear()
         stdscr.addstr(0,0,f"Testing area, proceed with caution!")
-        self.init_button_list()
         for i, row in enumerate(button_list):
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))
@@ -196,16 +206,21 @@ class Menu:
                 current_row = (current_row - 1) % len(button_list)
             elif key == curses.KEY_DOWN:
                 current_row = (current_row + 1) % len(button_list)
-            elif key == ord('\n'):  # Enter key
+            elif key == ord('\n'):
                 selected = button_list[current_row]
                 if selected == 'Back':
                     break
                 elif selected == 'Quit':
                     sys.exit(0)
                 else:
-                    tests.respond(selected)
+                    response = tests.respond(selected)
+                    height, width = stdscr.getmaxyx()
+                    textpos = int(width/2)-int(len(response)/2)
+                    stdscr.attron(curses.A_BLINK)
+                    stdscr.addstr(height-1,textpos,response)
                     stdscr.refresh()
                     stdscr.getch()
+                    stdscr.attroff(curses.A_BLINK)
 
 def main():
     """
@@ -213,12 +228,8 @@ def main():
     `python -m comp_mgr`
     Program's entry point.
     """
-
+    logging.getLogger(__name__)
     Components = CompIF(debug=1)
     ip_list = Components.discover()
-
-    # TODO testing, what argument goes here?
-    # Components.start_background_connections()
-
     menu = Menu(ip_list)
     curses.wrapper(menu.run_main_menu)
