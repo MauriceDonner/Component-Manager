@@ -60,7 +60,6 @@ class Menu:
 
         for ip in self.ip_list:
             # thread = threading.thread(target=update_button, args=(ip,),daemon=True).start()
-            time.sleep(2)
             update_button(ip)
 
     def draw_main_menu(self, stdscr, current_row):

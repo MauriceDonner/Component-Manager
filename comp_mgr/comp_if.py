@@ -88,7 +88,7 @@ class CompIF:
         try: 
             read = sock.recv(buffer)
             logger.debug(f"Receive: {read}")
-            message = read.split('.')[1]
+            message = str(read)[2:-3].split(':')[1]
         except socket.timeout:
             logger.error(f"Timeout")
         except socket.error as e:
@@ -140,9 +140,10 @@ class CompIF:
                 message = read[2:-3] # Cuts the b' and \\r
 
                 # If Rorze component, return name and serial number
-                if any(p in read for p in ['TRB','ALN','STG']):
-                    short_name = message.split('.')[0]
-                    sn_command = f"{short_name}.DEQU.GTDT[0]"
+                if any(p in read for p in ['TRB','ALN','STG','TBL']):
+                    short_name = message.split('.')[0][1:]
+                    logger.debug(f"short name: {short_name}")
+                    sn_command = f"o{short_name}.DEQU.GTDT[0]"
                     serial_number = self.send_and_read_rorze(sock,sn_command)
                     component_info["Name"] = short_name
                     component_info["SN"] = serial_number
