@@ -35,13 +35,17 @@ NETWORK = {
         "Lineartrack":   "172.20.9.140",
         "Loadport":      "172.20.9.100",
         "Prealigner":    "172.20.9.160",
-        "Simulation":    "127.0.0.1"
     }
 }
 
 OTHER_IPS = {
+    "127.0.0.1":     "Simulation",
+    "172.20.9.100":  "Loadport (Unconfigured)",
     "172.20.9.101":  "Loadport (Unconfigured)",
+    "172.20.9.140":  "Lineartrack (Unconfigured)",
+    "172.20.9.150":  "Robot (Unconfigured)",
     "172.20.9.151":  "Robot (Unconfigured)",
+    "172.20.9.160":  "Prealigner (Unconfigured)",
     "172.20.9.161":  "Prealigner (Unconfigured)",
     "172.20.9.220":  "Teaching Pendant (Unconfigured)",
     "192.168.0.10":  "SEMDEX Log Host",
