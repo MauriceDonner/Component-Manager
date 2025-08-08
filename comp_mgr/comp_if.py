@@ -115,12 +115,21 @@ class CompIF:
         return ip_info
 
     def get_component_info(self, ip: str, port:int=12100) -> dict:
+        """
+        Creates the comp_info dictionary. This is unified for all components, regardless of manufacturer:
+        {'IP':     192.168.0.1,
+         'System': SEMDEX,
+         'Type':   Robot,
+         'Name':   TRB1,
+         'SN'      XXXXX
+        }
+        """
         # Check, whether the ip corresponds to an actual component
         component_info = self.get_ip_info(ip)
         if component_info["Type"] == "Unknown IP":
             component_info["Name"] = None
             component_info["SN"] = None
-            logger.info(f"Received component info: {component_info}")
+            logger.debug("Received component info: {component_info}")
             return component_info
 
         # TODO: Add check, whether it can be connected to (aka only connect to robot, PA, or Loadport)
@@ -141,6 +150,7 @@ class CompIF:
 
                 # If Rorze component, return name and serial number
                 if any(p in read for p in ['TRB','ALN','STG','TBL']):
+                    logger.debug("Component type detected: Rorze")
                     short_name = message.split('.')[0][1:]
                     logger.debug(f"short name: {short_name}")
                     sn_command = f"o{short_name}.DEQU.GTDT[0]"
