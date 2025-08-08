@@ -24,9 +24,33 @@ class Menu:
     def __init__(self, ip_list: list):
         self.ip_list = ip_list.copy()
         self.buttons = {ip: "[...loading]" for ip in ip_list}
+        self.status = ""
+        self.status_until = 0
         logger.info("==================== PROGRAM START ====================")
         for i in ip_list:
             logger.info(f"Found IP: {i}")
+    
+    def set_status(self, message, duration=3):
+        self.status_message = message
+        self.status_until = time.time() + duration
+
+    def draw_status_popup(self, stdscr):
+        if time.time() >= self.status_until:
+            return
+        
+        height, width = stdscr.getmaxyx()
+        msg = self.status_message
+        box_width = len(msg) + 4
+        box_height = 3
+
+        start_y = 0
+        start_x = (width - box_width) // 2
+
+        stdscr.attron(curses.A_BLINK)
+        stdscr.addstr(start_y, start_x, "+" + "-" * (box_width - 2) + "+")
+        stdscr.addstr(start_y + 1, start_x, "| " + msg + " |")
+        stdscr.addstr(start_y + 2, start_x, "+" + "-" * (box_width - 2) + "+")
+        stdscr.attroff(curses.A_BLINK)
 
     def init_button_list(self):
         self.button_list = self.ip_list.copy()
@@ -35,6 +59,7 @@ class Menu:
         self.button_list.append('Quit')
 
     def update_main_buttons(self) -> None:
+        """Get component information from each ip address and update the displayed text"""
         comp_if = CompIF()
 
         def update_button(ip: str) -> None:
@@ -68,13 +93,15 @@ class Menu:
             display_text = row
             if row in self.buttons:
                 display_text += f" → {self.buttons[row]}"
-
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))
                 stdscr.addstr(i + 2, 2, display_text[:curses.COLS - 4])
                 stdscr.attroff(curses.color_pair(1))
             else:
                 stdscr.addstr(i + 2, 2, display_text[:curses.COLS - 4])
+
+        self.draw_status_popup(stdscr)
+
         stdscr.refresh()
 
     def run_main_menu(self, stdscr):
@@ -110,9 +137,15 @@ class Menu:
                     self.init_button_list()
                     threading.Thread(target=self.update_main_buttons, daemon=True).start()
                 else:
-                    comp_info = self.buttons[selected.split(" ")[1]]
-                    self.run_component_menu(stdscr, comp_info)
-                    current_row = 0 # After returning, select current row
+                    if self.buttons[selected] == "[...loading]":
+                        message = "Please wait, until the component is connected"
+                        self.set_status(message, 3)
+                    else:
+                        comp_if = CompIF()
+                        comp_info = comp_if.get_component_info(selected)
+                        logger.debug(f"comp_info: {comp_info}")
+                    # self.run_component_menu(stdscr, comp_info)
+                    # current_row = 0 # After returning, select current row
 
     def draw_component_menu(self, stdscr, component: Component, current_row, button_list):
         stdscr.clear()
