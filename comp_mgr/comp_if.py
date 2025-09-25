@@ -93,6 +93,9 @@ class CompIF:
             logger.error(f"Timeout")
         except socket.error as e:
             logger.error(f"Socket error: {e}")
+        except Exception as e:
+            logger.warning(f"Weird message received: {read}")
+            return str(read)
 
         return message
 
@@ -152,7 +155,7 @@ class CompIF:
                 if any(p in read for p in ['TRB','ALN','STG','TBL']):
                     logger.debug("Component type detected: Rorze")
                     short_name = message.split('.')[0][1:]
-                    logger.debug(f"short name: {short_name}")
+                    logger.debug(f"Short name: {short_name}")
                     sn_command = f"o{short_name}.DEQU.GTDT[0]"
                     serial_number = self.send_and_read_rorze(sock,sn_command)
                     component_info["Name"] = short_name

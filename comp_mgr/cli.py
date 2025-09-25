@@ -26,7 +26,7 @@ class Menu:
         self.buttons = {ip: "[...loading]" for ip in ip_list}
         self.status = ""
         self.status_until = 0
-        logger.info("==================== PROGRAM START ====================")
+        logger.info(40 * "=" + " PROGRAM START" + 40 * "=")
         for i in ip_list:
             logger.info(f"Found IP: {i}")
     
@@ -63,25 +63,25 @@ class Menu:
         comp_if = CompIF()
 
         def update_button(ip: str) -> None:
-            try:
-                component_info = comp_if.get_component_info(ip)
-                system = component_info['System']
-                type = component_info['Type']
-                name = component_info['Name']
-                sn = component_info['SN']
-                if name:
-                    info = f"{system} {type} {name} {sn}"
-                # If no name is assigned - show which system the ip is configured for
-                elif system:
-                    info = f"{system} {type}"
-                # If no system is assigned - only show component type
-                elif type:
-                    info = type
-                else:
-                    info = "[unidentified]"
-                self.buttons[ip] = info
-            except Exception as e:
-                self.buttons[ip] = f"[error: {e}]"
+            # try:
+            component_info = comp_if.get_component_info(ip)
+            system = component_info['System']
+            type = component_info['Type']
+            name = component_info['Name']
+            sn = component_info['SN']
+            if name:
+                info = f"{system} {type} {name} {sn}"
+            # If no name is assigned - show which system the ip is configured for
+            elif system:
+                info = f"{system} {type}"
+            # If no system is assigned - only show component type
+            elif type:
+                info = type
+            else:
+                info = "[unidentified]"
+            self.buttons[ip] = info
+            # except Exception as e:
+            #     self.buttons[ip] = f"[error: {e}]"
 
         for ip in self.ip_list:
             # thread = threading.thread(target=update_button, args=(ip,),daemon=True).start()
@@ -136,16 +136,14 @@ class Menu:
                     self.buttons = {ip: "[...loading]" for ip in self.ip_list}
                     self.init_button_list()
                     threading.Thread(target=self.update_main_buttons, daemon=True).start()
+                elif self.buttons[selected] == "[...loading]":
+                    message = "Please wait, until the component is connected"
+                    self.set_status(message, 3)
                 else:
-                    if self.buttons[selected] == "[...loading]":
-                        message = "Please wait, until the component is connected"
-                        self.set_status(message, 3)
-                    else:
-                        comp_if = CompIF()
-                        comp_info = comp_if.get_component_info(selected)
-                        logger.debug(f"comp_info: {comp_info}")
-                    # self.run_component_menu(stdscr, comp_info)
-                    # current_row = 0 # After returning, select current row
+                    comp_if = CompIF()
+                    comp_info = comp_if.get_component_info(selected)
+                    self.run_component_menu(stdscr, comp_info)
+                    current_row = 0 # After returning, select current row
 
     def draw_component_menu(self, stdscr, component: Component, current_row, button_list):
         stdscr.clear()
@@ -167,20 +165,24 @@ class Menu:
         stdscr.refresh()
 
     def run_component_menu(self, stdscr, comp_info: dict):
+        """
+        Takes the component information and creates a detailed status page by communicating with the component
+        comp_info = {'IP': '192.168.0.1', 'System': 'SEMDEX', 'Type': 'Robot', 'Name': 'TRB1', 'SN': 'XXXXX'}
+        """
 
-        # Check component type (to validate if IP matches expected component)
-        comp_type = CompIF.check_component_type(comp_info)
-        logger.debug(f"component.type={comp_type}")
+        ip = comp_info["IP"]
+        system = comp_info["System"]
+        type = comp_info["Type"]
+        name = comp_info["Name"]
 
-        if not any(p in comp_type for p in ['TRB','ALN','STG']):
+        if type == 'Simulation':
+                name = 'Simulation'
+
+        if any(p in name for p in ['TRB','ALN','STG','TBL','Simulation']):
+            # Instantiate a Rorze component 
+            component = Rorze(comp_info)
+        else:
             raise Exception("Other components than Rorze have not been implemented yet")
-
-        # Instantiate a Rorze component 
-        component = Rorze(
-            ip = comp_info["IP"],
-            system = comp_info["system"],
-            type = comp_type
-        )
 
         button_list_limited = ["Back", "Quit"]
         buttons = ["Get Status", "Read Data", "Rotary Switch"]
