@@ -9,6 +9,7 @@ import socket
 import threading
 import time
 from comp_mgr.config import NETWORK
+from typing import TextIO, Union
 
 logger = logging.getLogger(__name__)
 
@@ -268,9 +269,25 @@ class Rorze(Component):
         with open('testing/System_data.json', 'w') as out:
             json.dump(system_data, out, indent=4)
 
+        def read_block(self, block_name: str, n: Union[int, list[int]], command: str, file: TextIO) -> None:
+            name = self.name
+            buffer = 2**20
+            get_command = f"G{command[1:]}" # Turns STDT into GTDT
+            if isinstance(n, int):
+                block_range = range(n)
+            else:
+                block_range = n
+            if len(block_range) == 1:
+                block = self.send_and_read(f"o{name}.{block_name}.{get_command}",buffer)
+                file.write(f"{block_name}.{command}={block}")
+            else:
+                for i in block_range:
+                    block = self.send_and_read(f"o{name}.{block_name}.{get_command}[{i}]",buffer)
+                    file.write(f"{block_name}.{command}={block}")
+
         def read_data_robot(self,filename):
             name = self.name
-            buffer = 2**21
+            buffer = 2**20
             with open(f"{filename}.dat", "w") as backup:
                 IP = self.send_and_read(f"o{name}.GTDT[1]", buffer)
                 backup.write(f"STDT[1]={IP}")
@@ -367,7 +384,22 @@ class Rorze(Component):
                     DIND = self.send_and_read(f"o{name}.DIND.GTDT[{i}]", buffer) 
                     backup.write(f"DIND.STDT[{i}]={DIND}")
 
-
+        def read_data_prealigner(self,filename):
+            name = self.name
+            buffer = 2**21
+            with open(f"{filename}.dat", "w") as backup:
+                read_block("DRES", 1, "STDT", backup)
+                read_block("DEQU", 1, "STDT", backup)
+                read_block("DRCS", 5, "STDT", backup)
+                read_block("DMNT", 5, "STDT", backup)
+                for i in range(5):
+                    read_block("DSDB", 4, f"STDT[{i}]", backup)
+                read_block("DTMP", 3, "STDT", backup)
+                read_block("DCAM", 4, "STDT", backup)
+                read_block("DALN", 10, "STDT", backup)
+                read_block("DROT", 100, "STDT", backup)
+                read_block("DSEN", 10, "STDT", backup)
+                read_block("DRCP", 10, "STDT", backup)
 
 class Sinfonia(Component):
     pass
