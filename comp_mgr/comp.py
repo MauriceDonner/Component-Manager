@@ -385,6 +385,10 @@ class Rorze(Component):
                     backup.write(f"DIND.STDT[{i}]={DIND}")
 
         def read_data_prealigner(self,filename):
+            """
+            This is for the standard no-vaccuum spindle prealigner.
+            Other prealigners will have different backup procedures.
+            """
             name = self.name
             buffer = 2**21
             with open(f"{filename}.dat", "w") as backup:
@@ -400,6 +404,27 @@ class Rorze(Component):
                 read_block("DROT", 100, "STDT", backup)
                 read_block("DSEN", 10, "STDT", backup)
                 read_block("DRCP", 10, "STDT", backup)
+
+        def read_data_loadport(self,filename):
+            name = self.name
+            buffer = 2**21
+            with open(f"{filename}.dat", "w") as backup:
+                IP = self.send_and_read(f"o{name}.GTDT[1]", buffer)
+                backup.write(f"STDT[1]={IP}")
+                read_block("DEQU", 1, "STDT", backup)
+                read_block("DRES", 1, "STDT", backup)
+                read_block("DRCI", 2, "STDT", backup)
+                read_block("DRCS", 2, "STDT", backup)
+                read_block("DMNT", 2, "STDT", backup)
+                read_block("YAX1", 4, "STDT", backup)
+                read_block("YAX1", 1, "SPRM", backup)
+                read_block("ZAx1", 4, "STDT", backup)
+                read_block("ZAX1", 1, "SPRM", backup)
+                read_block("DSTG", 1, "STDT", backup)
+                read_block("DMPR", 1, "STDT", backup)
+                read_block("DPRM", 64, "STDT", backup)
+                read_block("DCST", 1, "STDT", backup)
+                read_block("DE84", 1, "STDT", backup)
 
 class Sinfonia(Component):
     pass
