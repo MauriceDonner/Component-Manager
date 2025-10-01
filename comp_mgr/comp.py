@@ -5,10 +5,12 @@ All Component data and methods is stored in these class instances
 """
 import logging
 import json
+import os
 import socket
 import threading
 import time
 from comp_mgr.config import NETWORK
+from datetime import datetime
 from typing import TextIO, Union
 
 logger = logging.getLogger(__name__)
@@ -233,198 +235,198 @@ class Rorze(Component):
         This serves the same purpose as the 'Read Data' button in the
         Rorze maintenance software. It is slightly different for each component.
         """
-        # Save data to a dictionary
-        system_data = {}
-        # Loadport Backup
-        if ("STG" in self.type) or ("SIMULATION" in self.type):
-            data_fields = [
-                "DEQU",
-                "DRES",
-                "DRCI",
-                "DRCS",
-                "DMNT",
-                "YAX1",
-                "ZAX1",
-                "DSTG",
-                "DMPR",
-                "DPRM",
-                "DCST",
-                "DE84"
-                ]
+        # Timestamp
+        ts = datetime.now().strftime("%Y%m%d")
+        index = 0
+        filename = f"{self.SN}_{ts}_{index}"
+
+        # Make sure to not overwrite a previous backup
+        file_exists = 1 if os.path.exists(filename) else 0
+        while file_exists:
+            index+=1
+            filename = f"{self.SN}_{ts}_{index}"
+            logger.warning(f"File exists! Changing filename to {filename}")
+            if os.path.exists(filename):
+                break
+        
+        if any(p in self.name for p in ['TRB','ALN','STG','TBL']):
+            data = self.send_and_read(f"o{self.name}.RTDT",2**21)
         else:
-            raise Exception(f"Data acquisition not implemented for {self.type}")
-            
-        # Get Own IP address
-        command = f"o{self.name}.GTDT[1]"
-        message = self.send_and_read(command).split(":")[1]
-        system_data["STDT[1]"] = message
+            error = f"Backup not implemented for component {self.name}"
+            logger.error(error)
+            raise Exception(error)
 
-        # Get remaining system data
-        for field in data_fields:
-            command = f"{self.name}.{field}.GTDT"
-            message = self.send_and_read(command, buffer=2**21) # 2MiB should always suffice
-            system_data[field] = message.split(':')[1]
-            self.status = 'Data saved to ./testing/System_data.json'
+        with open(f"{filename}.dat", "w") as backup:
+            backup.write(data)
 
-        with open('testing/System_data.json', 'w') as out:
-            json.dump(system_data, out, indent=4)
+        # Loadport Backup
+        # if ("STG") in self.name:
+        #     read_data_loadport(filename)
+        # elif("TRB") in self.name:
+        #     read_data_robot(filename)
+        # elif("ALN") in self.name:
+        #     read_data_prealigner(filename) # TODO add other prealigners than RA320
+        # else:
+        #     error = f"Backup not implemented for component {self.name}"
+        #     logger.error(error)
+        #     raise Exception(error)
+        
+        # def read_block(self, block_name: str, n: Union[int, list[int]], command: str, file: TextIO) -> None:
+        #     name = self.name
+        #     buffer = 2**20
+        #     get_command = f"G{command[1:]}" # Turns STDT into GTDT
+        #     if isinstance(n, int):
+        #         block_range = range(n)
+        #     else:
+        #         block_range = n
+        #     if len(block_range) == 1:
+        #         block = self.send_and_read(f"o{name}.{block_name}.{get_command}",buffer)
+        #         file.write(f"{block_name}.{command}={block}")
+        #     else:
+        #         for i in block_range:
+        #             block = self.send_and_read(f"o{name}.{block_name}.{get_command}[{i}]",buffer)
+        #             file.write(f"{block_name}.{command}={block}")
 
-        def read_block(self, block_name: str, n: Union[int, list[int]], command: str, file: TextIO) -> None:
-            name = self.name
-            buffer = 2**20
-            get_command = f"G{command[1:]}" # Turns STDT into GTDT
-            if isinstance(n, int):
-                block_range = range(n)
-            else:
-                block_range = n
-            if len(block_range) == 1:
-                block = self.send_and_read(f"o{name}.{block_name}.{get_command}",buffer)
-                file.write(f"{block_name}.{command}={block}")
-            else:
-                for i in block_range:
-                    block = self.send_and_read(f"o{name}.{block_name}.{get_command}[{i}]",buffer)
-                    file.write(f"{block_name}.{command}={block}")
+        # def read_data_robot(self,filename):
+        #     name = self.name
+        #     buffer = 2**20
+        #     with open(f"{filename}.dat", "w") as backup:
+        #         IP = self.send_and_read(f"o{name}.GTDT[1]", buffer)
+        #         backup.write(f"STDT[1]={IP}")
+        #         DEQU = self.send_and_read(f"o{name}.DEQU.GTDT", buffer)
+        #         backup.write(f"DEQU.STDT={DEQU}")
+        #         DRES = self.send_and_read(f"o{name}.DRES.GTDT", buffer)
+        #         backup.write(f"DRES.STDT={DRES}")
+        #         for i in range(5):
+        #             DRCI = self.send_and_read(f"o{name}.DRCI.GTDT[{i}]", buffer)
+        #             backup.write(f"DRCI.STDT[{i}]={DRCI}")
+        #         for i in range(5):
+        #             DRCS = self.send_and_read(f"o{name}.DRCS.GTDT[{i}]", buffer)
+        #             backup.write(f"DRCS.STDT[{i}]={DRCS}")
+        #         for i in range(5):
+        #             DRCH = self.send_and_read(f"o{name}.DRCH.GTDT[{i}]", buffer)
+        #             backup.write(f"DRCH.STDT[{i}]={DRCH}")
+        #         for i in range(5):
+        #             DMNT = self.send_and_read(f"o{name}.DMNT.GTDT[{i}]", buffer)
+        #             backup.write(f"DMNT.STDT[{i}]={DMNT}")
+        #         for i in [0,1,2,3,8,9,10,11,12,13,14,15,16,17,18,19,40]:
+        #             XAX1 = self.send_and_read(f"o{name}.XAX1.GTDT[{i}]", buffer)
+        #             backup.write(f"XAX1.STDT[{i}]={XAX1}")
+        #         XAX1 = self.send_and_read(f"o{name}.XAX1.GPRM")
+        #         backup.write(f"XAX1.SPRM={XAX1}")
+        #         for i in range(4):
+        #             ZAX1 = self.send_and_read(f"o{name}.ZAX1.GTDT[{i}]", buffer)
+        #             backup.write(f"ZAX1.STDT[{i}]={ZAX1}")
+        #         ZAX1 = self.send_and_read(f"o{name}.ZAX1.GPRM")
+        #         backup.write(f"ZAX1.SPRM={ZAX1}")
+        #         for i in range(4):
+        #             ROT1 = self.send_and_read(f"o{name}.ROT1.GTDT[{i}]", buffer)
+        #             backup.write(f"ROT1.STDT[{i}]={ROT1}")
+        #         ROT1 = self.send_and_read(f"o{name}.ROT1.GPRM")
+        #         backup.write(f"ROT1.SPRM={ROT1}")
+        #         for i in range(4):
+        #             ROT1 = self.send_and_read(f"o{name}.ROT1.GTDT[{i}]", buffer)
+        #             backup.write(f"ROT1.STDT[{i}]={ROT1}")
+        #         ROT1 = self.send_and_read(f"o{name}.ROT1.GPRM")
+        #         backup.write(f"ROT1.SPRM={ROT1}")
+        #         for i in range(4):
+        #             ARM1 = self.send_and_read(f"o{name}.ARM1.GTDT[{i}]", buffer)
+        #             backup.write(f"ARM1.STDT[{i}]={ARM1}")
+        #         ARM1 = self.send_and_read(f"o{name}.ARM1.GPRM")
+        #         backup.write(f"ARM1.SPRM={ARM1}")
+        #         for i in range(4):
+        #             ARM2 = self.send_and_read(f"o{name}.ARM2.GTDT[{i}]", buffer)
+        #             backup.write(f"ARM2.STDT[{i}]={ARM2}")
+        #         ARM2 = self.send_and_read(f"o{name}.ARM2.GPRM")
+        #         backup.write(f"ARM2.SPRM={ARM2}")
+        #         for i in range(16):
+        #             XAX1 = self.send_and_read(f"o{name}.XAX1.GEPM[{i}]", buffer)
+        #             backup.write(f"XAX1.SEPM[{i}]={XAX1}")
+        #         for i in range(16):
+        #             ZAX1 = self.send_and_read(f"o{name}.ZAX1.GEPM[{i}]", buffer)
+        #             backup.write(f"ZAX1.SEPM[{i}]{ZAX1}")
+        #         for i in range(16):
+        #             ROT1 = self.send_and_read(f"o{name}.ROT1.GEPM[{i}]", buffer)
+        #             backup.write(f"ROT1.SEPM[{i}]={ROT1}")
+        #         for i in range(16):
+        #             ARM1 = self.send_and_read(f"o{name}.ARM1.GEPM[{i}]", buffer)
+        #             backup.write(f"ARM1.SEPM[{i}]={ARM1}")
+        #         for i in range(16):
+        #             ARM2 = self.send_and_read(f"o{name}.ARM2.GEPM[{i}]", buffer)
+        #             backup.write(f"ARM2.SEPM[{i}]={ARM2}")
+        #         for i in range(3):
+        #             DAPM = self.send_and_read(f"o{name}.DAPM.GTDT[{i}]", buffer) 
+        #             backup.write(f"DAPM.STDT[{i}]={DAPM}")
+        #         for i in range(32):
+        #             DITK = self.send_and_read(f"o{name}.DITK.GTDT[{i}]", buffer) 
+        #             backup.write(f"DITK.STDT[{i}]={DITK}")
+        #         for i in range(32):
+        #             DOUT = self.send_and_read(f"o{name}.DOUT.GTDT[{i}]", buffer) 
+        #             backup.write(f"DOUT.STDT[{i}]={DOUT}")
+        #         for i in range(400):
+        #             DTRB = self.send_and_read(f"o{name}.DTRB.GTDA[{i}]", buffer)
+        #             backup.write(f"DTRB.STDA[{i}]={DTRB}")
+        #         for i in range(400):
+        #             DTUL = self.send_and_read(f"o{name}.DTUL.GTDA[{i}]", buffer)
+        #             backup.write(f"DTUL.STDA[{i}]={DTUL}")
+        #         for i in range(400):
+        #             DMPR = self.send_and_read(f"o{name}.DMPR.GTDT[{i}]", buffer) 
+        #             backup.write(f"DMPR.STDT[{i}]={DMPR}")
+        #         for i in range(400):
+        #             DCFG = self.send_and_read(f"o{name}.DCFG.GTDT[{i}]", buffer) 
+        #             backup.write(f"DCFG.STDT[{i}]={DCFG}")
+        #         for i in range(4):
+        #             for ii in range(400):
+        #                 DAXM = self.send_and_read(f"o{name}.DAXM.GTDT[{i}][{ii}]", buffer) 
+        #                 backup.write(f"DAXM.STDT[{i}][{ii}]={DAXM}")
+        #         for i in range(32):
+        #             DSSC = self.send_and_read(f"o{name}.DSSC.GTDT[{i}]", buffer) 
+        #             backup.write(f"DSSC.STDT[{i}]={DSSC}")
+        #         for i in range(4):
+        #             DIND = self.send_and_read(f"o{name}.DIND.GTDT[{i}]", buffer) 
+        #             backup.write(f"DIND.STDT[{i}]={DIND}")
 
-        def read_data_robot(self,filename):
-            name = self.name
-            buffer = 2**20
-            with open(f"{filename}.dat", "w") as backup:
-                IP = self.send_and_read(f"o{name}.GTDT[1]", buffer)
-                backup.write(f"STDT[1]={IP}")
-                DEQU = self.send_and_read(f"o{name}.DEQU.GTDT", buffer)
-                backup.write(f"DEQU.STDT={DEQU}")
-                DRES = self.send_and_read(f"o{name}.DRES.GTDT", buffer)
-                backup.write(f"DRES.STDT={DRES}")
-                for i in range(5):
-                    DRCI = self.send_and_read(f"o{name}.DRCI.GTDT[{i}]", buffer)
-                    backup.write(f"DRCI.STDT[{i}]={DRCI}")
-                for i in range(5):
-                    DRCS = self.send_and_read(f"o{name}.DRCS.GTDT[{i}]", buffer)
-                    backup.write(f"DRCS.STDT[{i}]={DRCS}")
-                for i in range(5):
-                    DRCH = self.send_and_read(f"o{name}.DRCH.GTDT[{i}]", buffer)
-                    backup.write(f"DRCH.STDT[{i}]={DRCH}")
-                for i in range(5):
-                    DMNT = self.send_and_read(f"o{name}.DMNT.GTDT[{i}]", buffer)
-                    backup.write(f"DMNT.STDT[{i}]={DMNT}")
-                for i in [0,1,2,3,8,9,10,11,12,13,14,15,16,17,18,19,40]:
-                    XAX1 = self.send_and_read(f"o{name}.XAX1.GTDT[{i}]", buffer)
-                    backup.write(f"XAX1.STDT[{i}]={XAX1}")
-                XAX1 = self.send_and_read(f"o{name}.XAX1.GPRM")
-                backup.write(f"XAX1.SPRM={XAX1}")
-                for i in range(4):
-                    ZAX1 = self.send_and_read(f"o{name}.ZAX1.GTDT[{i}]", buffer)
-                    backup.write(f"ZAX1.STDT[{i}]={ZAX1}")
-                ZAX1 = self.send_and_read(f"o{name}.ZAX1.GPRM")
-                backup.write(f"ZAX1.SPRM={ZAX1}")
-                for i in range(4):
-                    ROT1 = self.send_and_read(f"o{name}.ROT1.GTDT[{i}]", buffer)
-                    backup.write(f"ROT1.STDT[{i}]={ROT1}")
-                ROT1 = self.send_and_read(f"o{name}.ROT1.GPRM")
-                backup.write(f"ROT1.SPRM={ROT1}")
-                for i in range(4):
-                    ROT1 = self.send_and_read(f"o{name}.ROT1.GTDT[{i}]", buffer)
-                    backup.write(f"ROT1.STDT[{i}]={ROT1}")
-                ROT1 = self.send_and_read(f"o{name}.ROT1.GPRM")
-                backup.write(f"ROT1.SPRM={ROT1}")
-                for i in range(4):
-                    ARM1 = self.send_and_read(f"o{name}.ARM1.GTDT[{i}]", buffer)
-                    backup.write(f"ARM1.STDT[{i}]={ARM1}")
-                ARM1 = self.send_and_read(f"o{name}.ARM1.GPRM")
-                backup.write(f"ARM1.SPRM={ARM1}")
-                for i in range(4):
-                    ARM2 = self.send_and_read(f"o{name}.ARM2.GTDT[{i}]", buffer)
-                    backup.write(f"ARM2.STDT[{i}]={ARM2}")
-                ARM2 = self.send_and_read(f"o{name}.ARM2.GPRM")
-                backup.write(f"ARM2.SPRM={ARM2}")
-                for i in range(16):
-                    XAX1 = self.send_and_read(f"o{name}.XAX1.GEPM[{i}]", buffer)
-                    backup.write(f"XAX1.SEPM[{i}]={XAX1}")
-                for i in range(16):
-                    ZAX1 = self.send_and_read(f"o{name}.ZAX1.GEPM[{i}]", buffer)
-                    backup.write(f"ZAX1.SEPM[{i}]{ZAX1}")
-                for i in range(16):
-                    ROT1 = self.send_and_read(f"o{name}.ROT1.GEPM[{i}]", buffer)
-                    backup.write(f"ROT1.SEPM[{i}]={ROT1}")
-                for i in range(16):
-                    ARM1 = self.send_and_read(f"o{name}.ARM1.GEPM[{i}]", buffer)
-                    backup.write(f"ARM1.SEPM[{i}]={ARM1}")
-                for i in range(16):
-                    ARM2 = self.send_and_read(f"o{name}.ARM2.GEPM[{i}]", buffer)
-                    backup.write(f"ARM2.SEPM[{i}]={ARM2}")
-                for i in range(3):
-                    DAPM = self.send_and_read(f"o{name}.DAPM.GTDT[{i}]", buffer) 
-                    backup.write(f"DAPM.STDT[{i}]={DAPM}")
-                for i in range(32):
-                    DITK = self.send_and_read(f"o{name}.DITK.GTDT[{i}]", buffer) 
-                    backup.write(f"DITK.STDT[{i}]={DITK}")
-                for i in range(32):
-                    DOUT = self.send_and_read(f"o{name}.DOUT.GTDT[{i}]", buffer) 
-                    backup.write(f"DOUT.STDT[{i}]={DOUT}")
-                for i in range(400):
-                    DTRB = self.send_and_read(f"o{name}.DTRB.GTDA[{i}]", buffer)
-                    backup.write(f"DTRB.STDA[{i}]={DTRB}")
-                for i in range(400):
-                    DTUL = self.send_and_read(f"o{name}.DTUL.GTDA[{i}]", buffer)
-                    backup.write(f"DTUL.STDA[{i}]={DTUL}")
-                for i in range(400):
-                    DMPR = self.send_and_read(f"o{name}.DMPR.GTDT[{i}]", buffer) 
-                    backup.write(f"DMPR.STDT[{i}]={DMPR}")
-                for i in range(400):
-                    DCFG = self.send_and_read(f"o{name}.DCFG.GTDT[{i}]", buffer) 
-                    backup.write(f"DCFG.STDT[{i}]={DCFG}")
-                for i in range(4):
-                    for ii in range(400):
-                        DAXM = self.send_and_read(f"o{name}.DAXM.GTDT[{i}][{ii}]", buffer) 
-                        backup.write(f"DAXM.STDT[{i}][{ii}]={DAXM}")
-                for i in range(32):
-                    DSSC = self.send_and_read(f"o{name}.DSSC.GTDT[{i}]", buffer) 
-                    backup.write(f"DSSC.STDT[{i}]={DSSC}")
-                for i in range(4):
-                    DIND = self.send_and_read(f"o{name}.DIND.GTDT[{i}]", buffer) 
-                    backup.write(f"DIND.STDT[{i}]={DIND}")
+        # def read_data_prealigner(self,filename):
+        #     """
+        #     This is for the standard no-vaccuum spindle prealigner.
+        #     Other prealigners will have different backup procedures.
+        #     """
+        #     name = self.name
+        #     buffer = 2**21
+        #     with open(f"{filename}.dat", "w") as backup:
+        #         read_block("DRES", 1, "STDT", backup)
+        #         read_block("DEQU", 1, "STDT", backup)
+        #         read_block("DRCS", 5, "STDT", backup)
+        #         read_block("DMNT", 5, "STDT", backup)
+        #         for i in range(5):
+        #             read_block("DSDB", 4, f"STDT[{i}]", backup)
+        #         read_block("DTMP", 3, "STDT", backup)
+        #         read_block("DCAM", 4, "STDT", backup)
+        #         read_block("DALN", 10, "STDT", backup)
+        #         read_block("DROT", 100, "STDT", backup)
+        #         read_block("DSEN", 10, "STDT", backup)
+        #         read_block("DRCP", 10, "STDT", backup)
 
-        def read_data_prealigner(self,filename):
-            """
-            This is for the standard no-vaccuum spindle prealigner.
-            Other prealigners will have different backup procedures.
-            """
-            name = self.name
-            buffer = 2**21
-            with open(f"{filename}.dat", "w") as backup:
-                read_block("DRES", 1, "STDT", backup)
-                read_block("DEQU", 1, "STDT", backup)
-                read_block("DRCS", 5, "STDT", backup)
-                read_block("DMNT", 5, "STDT", backup)
-                for i in range(5):
-                    read_block("DSDB", 4, f"STDT[{i}]", backup)
-                read_block("DTMP", 3, "STDT", backup)
-                read_block("DCAM", 4, "STDT", backup)
-                read_block("DALN", 10, "STDT", backup)
-                read_block("DROT", 100, "STDT", backup)
-                read_block("DSEN", 10, "STDT", backup)
-                read_block("DRCP", 10, "STDT", backup)
-
-        def read_data_loadport(self,filename):
-            name = self.name
-            buffer = 2**21
-            with open(f"{filename}.dat", "w") as backup:
-                IP = self.send_and_read(f"o{name}.GTDT[1]", buffer)
-                backup.write(f"STDT[1]={IP}")
-                read_block("DEQU", 1, "STDT", backup)
-                read_block("DRES", 1, "STDT", backup)
-                read_block("DRCI", 2, "STDT", backup)
-                read_block("DRCS", 2, "STDT", backup)
-                read_block("DMNT", 2, "STDT", backup)
-                read_block("YAX1", 4, "STDT", backup)
-                read_block("YAX1", 1, "SPRM", backup)
-                read_block("ZAx1", 4, "STDT", backup)
-                read_block("ZAX1", 1, "SPRM", backup)
-                read_block("DSTG", 1, "STDT", backup)
-                read_block("DMPR", 1, "STDT", backup)
-                read_block("DPRM", 64, "STDT", backup)
-                read_block("DCST", 1, "STDT", backup)
-                read_block("DE84", 1, "STDT", backup)
+        # def read_data_loadport(self,filename):
+        #     name = self.name
+        #     buffer = 2**21
+        #     with open(f"{filename}.dat", "w") as backup:
+        #         IP = self.send_and_read(f"o{name}.GTDT[1]", buffer)
+        #         backup.write(f"STDT[1]={IP}")
+        #         read_block("DEQU", 1, "STDT", backup)
+        #         read_block("DRES", 1, "STDT", backup)
+        #         read_block("DRCI", 2, "STDT", backup)
+        #         read_block("DRCS", 2, "STDT", backup)
+        #         read_block("DMNT", 2, "STDT", backup)
+        #         read_block("YAX1", 4, "STDT", backup)
+        #         read_block("YAX1", 1, "SPRM", backup)
+        #         read_block("ZAx1", 4, "STDT", backup)
+        #         read_block("ZAX1", 1, "SPRM", backup)
+        #         read_block("DSTG", 1, "STDT", backup)
+        #         read_block("DMPR", 1, "STDT", backup)
+        #         read_block("DPRM", 64, "STDT", backup)
+        #         read_block("DCST", 1, "STDT", backup)
+        #         read_block("DE84", 1, "STDT", backup)
 
 class Sinfonia(Component):
     pass
