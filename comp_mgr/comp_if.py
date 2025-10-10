@@ -159,7 +159,7 @@ class CompIF:
                     sn_command = f"o{short_name}.DEQU.GTDT[0]"
                     serial_number = self.send_and_read_rorze(sock,sn_command)
                     component_info["Name"] = short_name
-                    component_info["SN"] = serial_number
+                    component_info["SN"] = serial_number.split('"')[1]
                     logger.info(f"Received component info: {component_info}")
                     return component_info
 
