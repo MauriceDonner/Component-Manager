@@ -41,7 +41,7 @@ NETWORK = {
 }
 
 OTHER_IPS = {
-    "127.0.0.1":     "Simulation",
+    # "127.0.0.1":     "Simulation",
     "172.20.9.100":  "Loadport (Unconfigured)",
     "172.20.9.101":  "Loadport (Unconfigured)",
     "172.20.9.140":  "Lineartrack (Unconfigured)",
@@ -50,7 +50,6 @@ OTHER_IPS = {
     "172.20.9.160":  "Prealigner (Unconfigured)",
     "172.20.9.161":  "Prealigner (Unconfigured)",
     "172.20.9.220":  "Teaching Pendant (Unconfigured)",
-    "192.168.0.10":  "SEMDEX Log Host",
     "192.168.30.1":  "WMC Software PC",
     "192.168.40.2":  "WMC Hardware PC",
     "192.168.30.55": "Reolink Camera",
