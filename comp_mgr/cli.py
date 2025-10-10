@@ -211,7 +211,7 @@ class Menu:
                 elif selected == 'Origin':
                     threading.Thread(target=component.origin_search, daemon=True).start()
                 elif selected == 'Read Data':
-                    threading.Thread(target=component.acquire_system_data, daemon=True).start()
+                    threading.Thread(target=component.read_data, daemon=True).start()
                 elif selected == 'Rotary Switch':
                     threading.Thread(target=component.get_rotary_switch_value, daemon=True).start()
 
