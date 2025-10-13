@@ -120,20 +120,22 @@ class CompIF:
     def get_component_info(self, ip: str, port:int=12100) -> dict:
         """
         Creates the comp_info dictionary. This is unified for all components, regardless of manufacturer:
-        {'IP':     192.168.0.1,
-         'System': SEMDEX,
-         'Type':   Robot,
-         'Name':   TRB1,
-         'SN'      XXXXX
+        {'IP':       192.168.0.1,
+         'System':   SEMDEX,
+         'Type':     Robot,
+         'Name':     TRB1,
+         'SN'        XXXXX
+         'CType':    RR757
+         'Firmware': 1.19U
         }
         """
         # Check, whether the ip corresponds to an actual component
-        component_info = self.get_ip_info(ip)
-        if component_info["Type"] == "Unknown IP":
-            component_info["Name"] = None
-            component_info["SN"] = None
-            logger.debug("Received component info: {component_info}")
-            return component_info
+        comp_info = self.get_ip_info(ip)
+        if comp_info["Type"] == "Unknown IP":
+            comp_info["Name"] = None
+            comp_info["SN"] = None
+            logger.debug(f"Received component info: {comp_info}")
+            return comp_info
 
         # TODO: Add check, whether it can be connected to (aka only connect to robot, PA, or Loadport)
 
@@ -154,20 +156,26 @@ class CompIF:
                 # If Rorze component, return name and serial number
                 if any(p in read for p in ['TRB','ALN','STG','TBL']):
                     logger.debug("Component type detected: Rorze")
-                    short_name = message.split('.')[0][1:]
-                    logger.debug(f"Short name: {short_name}")
-                    sn_command = f"o{short_name}.DEQU.GTDT[0]"
+                    name = message.split('.')[0][1:]
+                    logger.debug(f"Short name: {name}")
+                    # Get Rorze Serial Number
+                    sn_command = f"o{name}.DEQU.GTDT[0]"
                     serial_number = self.send_and_read_rorze(sock,sn_command)
-                    component_info["Name"] = short_name
-                    component_info["SN"] = serial_number.split('"')[1]
-                    logger.info(f"Received component info: {component_info}")
-                    return component_info
+                    # Get Rorze Component Type and Firmware version
+                    verstring = self.send_and_read(f"o{name}.GVER").split(" ")
+                    ctype, firmware, = verstring[-4], verstring[-2]
+                    comp_info["Name"] = name
+                    comp_info["SN"] = serial_number.split('"')[1]
+                    comp_info["CType"] = ctype
+                    comp_info["Name"] = firmware
+                    logger.info(f"Received component info: {comp_info}")
+                    return comp_info
 
                 else: # TODO Add more components here
-                    component_info["Name"] = None
-                    component_info["SN"] = None
-                    logger.info(f"Received component info: {component_info}")
-                    return component_info
+                    comp_info["Name"] = None
+                    comp_info["SN"] = None
+                    logger.info(f"Received component info: {comp_info}")
+                    return comp_info
 
             except socket.timeout:
                 logger.warning(f"Connection Timeout when connecting to {ip}... Retrying {retries-i} more times.")
@@ -177,7 +185,7 @@ class CompIF:
                 time.sleep(1)
 
         # If no connection can be established, return empty info
-        component_info["Name"] = None
-        component_info["SN"] = None
-        logger.info(f"Received component info: {component_info}")
-        return component_info
+        comp_info["Name"] = None
+        comp_info["SN"] = None
+        logger.info(f"Received component info: {comp_info}")
+        return comp_info

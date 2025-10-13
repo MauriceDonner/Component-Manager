@@ -147,7 +147,7 @@ class Menu:
 
     def draw_component_menu(self, stdscr, component: Component, current_row, button_list):
         stdscr.clear()
-        stdscr.addstr(0,0,f'Component: {component.display_name}')
+        stdscr.addstr(0,0,f'Component: {component.display_name} {component.ctype} Ver. {component.firmware}')
         stdscr.addstr(1,0,f"Current IP: {component.ip}")
         stdscr.addstr(2,0,f"System: {component.system}")
         stdscr.addstr(3,0,f"Status: {component.status}")
@@ -167,11 +167,9 @@ class Menu:
     def run_component_menu(self, stdscr, comp_info: dict):
         """
         Takes the component information and creates a detailed status page by communicating with the component
-        comp_info = {'IP': '192.168.0.1', 'System': 'SEMDEX', 'Type': 'Robot', 'Name': 'TRB1', 'SN': 'XXXXX'}
+        comp_info = {'IP': '192.168.0.1', 'System': 'SEMDEX', 'Type': 'Robot', 'Name': 'TRB1', 'SN': 'XXXXX', etc.}
         """
 
-        ip = comp_info["IP"]
-        system = comp_info["System"]
         type = comp_info["Type"]
         name = comp_info["Name"]
 

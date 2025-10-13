@@ -188,6 +188,10 @@ class Rorze(Component):
         self.name = comp_info["Name"]
         # Serial number of the component (if it exists)
         self.sn = comp_info["SN"]
+        # Component Type (e.g. "RA320_003")
+        self.ctype = comp_info["CType"]
+        # Firmware Version
+        self.firmware = comp_info["firmware"]
 
         self.status = "Initializing..."
         logger.info(f"Initializing {self.display_name}...")
