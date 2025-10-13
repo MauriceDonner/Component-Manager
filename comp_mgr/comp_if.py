@@ -162,12 +162,12 @@ class CompIF:
                     sn_command = f"o{name}.DEQU.GTDT[0]"
                     serial_number = self.send_and_read_rorze(sock,sn_command)
                     # Get Rorze Component Type and Firmware version
-                    verstring = self.send_and_read(f"o{name}.GVER").split(" ")
+                    verstring = self.send_and_read_rorze(sock, f"o{name}.GVER").split(" ")
                     ctype, firmware, = verstring[-4], verstring[-2]
                     comp_info["Name"] = name
                     comp_info["SN"] = serial_number.split('"')[1]
                     comp_info["CType"] = ctype
-                    comp_info["Name"] = firmware
+                    comp_info["Firmware"] = firmware
                     logger.info(f"Received component info: {comp_info}")
                     return comp_info
 

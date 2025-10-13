@@ -191,7 +191,7 @@ class Rorze(Component):
         # Component Type (e.g. "RA320_003")
         self.ctype = comp_info["CType"]
         # Firmware Version
-        self.firmware = comp_info["firmware"]
+        self.firmware = comp_info["Firmware"]
 
         self.status = "Initializing..."
         logger.info(f"Initializing {self.display_name}...")
