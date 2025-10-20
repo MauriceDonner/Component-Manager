@@ -41,7 +41,7 @@ NETWORK = {
 }
 
 OTHER_IPS = {
-    # "127.0.0.1":     "Simulation",
+    "127.0.0.1":     "Simulation",
     "172.20.9.100":  "Loadport (Unconfigured)",
     "172.20.9.101":  "Loadport (Unconfigured)",
     "172.20.9.140":  "Lineartrack (Unconfigured)",
@@ -52,18 +52,18 @@ OTHER_IPS = {
     "172.20.9.220":  "Teaching Pendant (Unconfigured)",
     "192.168.30.1":  "WMC Software PC",
     "192.168.40.2":  "WMC Hardware PC",
-    "192.168.30.55": "Reolink Camera",
-    "192.168.30.56": "Reolink Camera",
-    "192.168.30.57": "Reolink Camera",
-    "192.168.30.58": "Reolink Camera",
-    "192.168.30.59": "Reolink Camera",
-    "192.168.30.240":"Reolink Camera",
-    "192.168.30.241":"Reolink Camera",
-    "192.168.60.55": "Reolink Camera",
-    "192.168.60.56": "Reolink Camera",
-    "192.168.60.57": "Reolink Camera",
-    "192.168.60.58": "Reolink Camera",
-    "192.168.60.59": "Reolink Camera",
+    "192.168.30.55": "Reolink Camera (?)",
+    "192.168.30.56": "Reolink Camera (?)",
+    "192.168.30.57": "Reolink Camera (?)",
+    "192.168.30.58": "Reolink Camera (?)",
+    "192.168.30.59": "Reolink Camera (?)",
+    "192.168.30.240":"Reolink Camera (?)",
+    "192.168.30.241":"Reolink Camera (?)",
+    "192.168.60.55": "Reolink Camera (?)",
+    "192.168.60.56": "Reolink Camera (?)",
+    "192.168.60.57": "Reolink Camera (?)",
+    "192.168.60.58": "Reolink Camera (?)",
+    "192.168.60.59": "Reolink Camera (?)",
 }
 
 CANCEL_CODES = {

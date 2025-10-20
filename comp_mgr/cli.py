@@ -65,23 +65,24 @@ class Menu:
     def update_main_buttons(self) -> None:
         """Get component information from each ip address and update the displayed text"""
         comp_if = CompIF()
-        all_components = {}
-        threads = []
+        self.all_components = {}
 
         def update_button(ip: str) -> None:
             comp_info = comp_if.get_component_info(ip)
-            all_components[ip] = comp_info
+            self.all_components[ip] = comp_info
             system = comp_info['System']
             type = comp_info['Type']
             name = comp_info['Name']
             sn = comp_info['SN']
             firmware = comp_info['Firmware']
-            if name:
+
+            # Information Cascade - Reduce infomation if not available
+            if firmware:
                 info = f"{system} {type} {name} {sn} v{firmware}"
-            # If no name is assigned - show which system the ip is configured for
+            elif name:
+                info = f"{system} {type} {name} {sn}"
             elif system:
                 info = f"{system} {type}"
-            # If no system is assigned - only show component type
             elif type:
                 info = type
             else:
@@ -89,21 +90,7 @@ class Menu:
             self.buttons[ip] = info
 
         for ip in self.ip_list:
-            thread = threading.Thread(target=update_button, args=(ip,),daemon=True)
-            threads.append(thread)
-            thread.start()
-            # update_button(ip)
-
-        # Wait for all threads to finish before returning
-        for t in threads:
-            t.join()
-        
-        logger.debug('=== ALL COMPONENTS ===')
-        for ip in self.ip_list:
-            logger.debug(f'{all_components[ip]}')
-
-        return all_components
-        
+            threading.Thread(target=update_button, args=(ip,),daemon=True).start()
 
     def draw_main_menu(self, stdscr, current_row):
         stdscr.clear()
@@ -155,12 +142,12 @@ class Menu:
                     self.init_button_list()
                     threading.Thread(target=self.update_main_buttons, daemon=True).start()
                 elif self.buttons[selected] == "[...loading]":
-                    message = "Please wait, until the component is connected"
-                    self.set_status(message, 3)
+                    self.set_status("Please wait, until the component is connected", 3)
                 elif self.buttons[selected] == "Configure all unconfigured":
-                    AutosetupMenu.run(stdscr, self.ip_list)
-                    message = "Please wait, until the component is connected"
-                    self.set_status(message, 3)
+                    if any(info == '[...loading]' for info in self.buttons.values()):
+                        self.set_status("Please wait, until all components are connected", 3)
+                    else:
+                        AutosetupMenu.run(stdscr, self.ip_list)
                 else:
                     comp_if = CompIF()
                     comp_info = comp_if.get_component_info(selected)
@@ -174,7 +161,7 @@ def main():
     Program's entry point.
     """
     logging.getLogger(__name__)
-    Components = CompIF(debug=1)
+    Components = CompIF()
     ip_list = Components.discover()
     menu = Menu(ip_list)
     curses.wrapper(menu.run_main_menu)

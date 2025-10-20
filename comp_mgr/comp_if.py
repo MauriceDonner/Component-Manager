@@ -9,7 +9,6 @@ import logging
 import socket
 import subprocess
 import time
-import json # Debugging
 from comp_mgr.config import NETWORK, OTHER_IPS
 from comp_mgr.comp import Component
 
@@ -17,10 +16,9 @@ logger = logging.getLogger(__name__)
 
 class CompIF:
 
-    def __init__(self,debug=0):
+    def __init__(self):
         self.status = "OK"
         self.system = "UNCONF"
-        self.debug = debug
 
         # TODO testing
         self.connection_threads = []
@@ -99,7 +97,7 @@ class CompIF:
 
         return message
 
-    def get_ip_info(self, target_ip: str):
+    def get_ip_info(self, target_ip: str) -> str:
         """Check whether the IP corresponds to an actual component"""
         for system, components in NETWORK.items():
             for component, ip in components.items():
@@ -131,12 +129,21 @@ class CompIF:
         """
         # Check, whether the ip corresponds to an actual component
         comp_info = self.get_ip_info(ip)
+
         if comp_info["Type"] == "Unknown IP":
             comp_info["Name"] = None
             comp_info["SN"] = None
             comp_info["CType"] = None
             comp_info["Firmware"] = None
             logger.debug(f"Received component info: {comp_info}")
+            return comp_info
+
+        if comp_info["Type"] == "Simulation":
+            time.sleep(2)
+            comp_info["Name"] = 'SIM1'
+            comp_info["SN"] = 'SIM1234'
+            comp_info["CType"] = 'SIM_COMPONENT'
+            comp_info["Firmware"] = '1.19U'
             return comp_info
 
         # TODO: Add check, whether it can be connected to (aka only connect to robot, PA, or Loadport)
