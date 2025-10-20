@@ -146,7 +146,7 @@ class Menu:
                 else:
                     comp_if = CompIF()
                     comp_info = comp_if.get_component_info(selected)
-                    self.run_component_menu(stdscr, comp_info)
+                    ComponentMenu(comp_info).run(stdscr)
                     current_row = 0 # After returning, select current row
 
 def main():
