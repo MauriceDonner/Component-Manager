@@ -134,6 +134,8 @@ class CompIF:
         if comp_info["Type"] == "Unknown IP":
             comp_info["Name"] = None
             comp_info["SN"] = None
+            comp_info["CType"] = None
+            comp_info["Firmware"] = None
             logger.debug(f"Received component info: {comp_info}")
             return comp_info
 
@@ -174,6 +176,8 @@ class CompIF:
                 else: # TODO Add more components here
                     comp_info["Name"] = None
                     comp_info["SN"] = None
+                    comp_info["CType"] = None
+                    comp_info["Firmware"] = None
                     logger.info(f"Received component info: {comp_info}")
                     return comp_info
 
@@ -187,5 +191,7 @@ class CompIF:
         # If no connection can be established, return empty info
         comp_info["Name"] = None
         comp_info["SN"] = None
+        comp_info["CType"] = None
+        comp_info["Firmware"] = None
         logger.info(f"Received component info: {comp_info}")
         return comp_info

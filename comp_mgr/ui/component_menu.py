@@ -19,21 +19,21 @@ class ComponentMenu:
     def draw(self, stdscr, current_row, button_list):
         c = self.component 
         stdscr.clear()
-        stdscr.addstr(0,0,f'Component: {c.display_name} {c.ctype} v{c.firmware}')
-        stdscr.addstr(1,0,f"Current IP: {c.ip}")
-        stdscr.addstr(2,0,f"System: {c.system}")
-        stdscr.addstr(3,0,f"Status: {c.status}")
+        stdscr.addstr(1,0,f'Component: {c.display_name} {c.ctype} v{c.firmware}')
+        stdscr.addstr(2,0,f"Current IP: {c.ip}")
+        stdscr.addstr(3,0,f"System: {c.system}")
+        stdscr.addstr(4,0,f"Status: {c.status}")
 
         if c.busy:
-            stdscr.addstr(0,50,f'=== BUSY ===')
+            stdscr.addstr(1,50,f'=== BUSY ===')
 
         for i, row in enumerate(button_list):
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))
-                stdscr.addstr(i + 5, 5, row)
+                stdscr.addstr(i + 6, 5, row)
                 stdscr.attroff(curses.color_pair(1))
             else:
-                stdscr.addstr(i + 5, 5, row)
+                stdscr.addstr(i + 6, 5, row)
 
         draw_status_popup(stdscr, self.status_message, self.status_until)
         stdscr.refresh()

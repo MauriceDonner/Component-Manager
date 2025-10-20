@@ -66,7 +66,7 @@ class Menu:
         """Get component information from each ip address and update the displayed text"""
         comp_if = CompIF()
         all_components = {}
-        # threads = []
+        threads = []
 
         def update_button(ip: str) -> None:
             comp_info = comp_if.get_component_info(ip)
@@ -75,8 +75,9 @@ class Menu:
             type = comp_info['Type']
             name = comp_info['Name']
             sn = comp_info['SN']
+            firmware = comp_info['Firmware']
             if name:
-                info = f"{system} {type} {name} {sn}"
+                info = f"{system} {type} {name} {sn} v{firmware}"
             # If no name is assigned - show which system the ip is configured for
             elif system:
                 info = f"{system} {type}"
@@ -88,8 +89,21 @@ class Menu:
             self.buttons[ip] = info
 
         for ip in self.ip_list:
-            # thread = threading.thread(target=update_button, args=(ip,),daemon=True).start()
-            update_button(ip)
+            thread = threading.Thread(target=update_button, args=(ip,),daemon=True)
+            threads.append(thread)
+            thread.start()
+            # update_button(ip)
+
+        # Wait for all threads to finish before returning
+        for t in threads:
+            t.join()
+        
+        logger.debug('=== ALL COMPONENTS ===')
+        for ip in self.ip_list:
+            logger.debug(f'{all_components[ip]}')
+
+        return all_components
+        
 
     def draw_main_menu(self, stdscr, current_row):
         stdscr.clear()
@@ -141,6 +155,10 @@ class Menu:
                     self.init_button_list()
                     threading.Thread(target=self.update_main_buttons, daemon=True).start()
                 elif self.buttons[selected] == "[...loading]":
+                    message = "Please wait, until the component is connected"
+                    self.set_status(message, 3)
+                elif self.buttons[selected] == "Configure all unconfigured":
+                    AutosetupMenu.run(stdscr, self.ip_list)
                     message = "Please wait, until the component is connected"
                     self.set_status(message, 3)
                 else:
