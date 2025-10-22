@@ -11,6 +11,7 @@ from comp_mgr.comp_if import CompIF
 from comp_mgr.comp import *
 from comp_mgr.exceptions import *
 from comp_mgr.ui import TestingMenu, ComponentMenu, AutosetupMenu
+from comp_mgr.ui.common_ui import draw_status_popup
 
 os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
@@ -25,7 +26,7 @@ class Menu:
     def __init__(self, ip_list: list):
         self.ip_list = ip_list.copy()
         self.buttons = {ip: "[...loading]" for ip in ip_list}
-        self.status = ""
+        self.status_message = None
         self.status_until = 0
         logger.info(40 * "=" + " PROGRAM START" + 40 * "=")
         for i in ip_list:
@@ -43,24 +44,6 @@ class Menu:
     def set_status(self, message, duration=3):
         self.status_message = message
         self.status_until = time.time() + duration
-
-    def draw_status_popup(self, stdscr):
-        if time.time() >= self.status_until:
-            return
-        
-        height, width = stdscr.getmaxyx()
-        msg = self.status_message
-        box_width = len(msg) + 4
-        box_height = 3
-
-        start_y = 0
-        start_x = (width - box_width) // 2
-
-        stdscr.attron(curses.A_BLINK)
-        stdscr.addstr(start_y, start_x, "+" + "-" * (box_width - 2) + "+")
-        stdscr.addstr(start_y + 1, start_x, "| " + msg + " |")
-        stdscr.addstr(start_y + 2, start_x, "+" + "-" * (box_width - 2) + "+")
-        stdscr.attroff(curses.A_BLINK)
 
     def update_main_buttons(self) -> None:
         """Get component information from each ip address and update the displayed text"""
@@ -105,7 +88,7 @@ class Menu:
             else:
                 stdscr.addstr(i + 2, 2, display_text[:curses.COLS - 4])
 
-        self.draw_status_popup(stdscr)
+        draw_status_popup(stdscr, self.status_message, self.status_until)
 
         stdscr.refresh()
 
@@ -152,6 +135,8 @@ class Menu:
                         except DoubleConfiguration as e:
                             self.set_status(str(e), 3)
                         except TestException as e:
+                            self.set_status(str(e), 3)
+                        except Exception as e:
                             self.set_status(str(e), 3)
                 else:
                     comp_if = CompIF()
