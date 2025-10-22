@@ -9,9 +9,8 @@ import threading
 import time
 from comp_mgr.comp_if import CompIF
 from comp_mgr.comp import *
-from comp_mgr.ui.testing_menu import TestingMenu
-from comp_mgr.ui.component_menu import ComponentMenu
-from comp_mgr.ui.autosetup_menu import AutosetupMenu
+from comp_mgr.exceptions import *
+from comp_mgr.ui import TestingMenu, ComponentMenu, AutosetupMenu
 
 os.makedirs("logs", exist_ok=True)
 logging.basicConfig(
@@ -31,6 +30,15 @@ class Menu:
         logger.info(40 * "=" + " PROGRAM START" + 40 * "=")
         for i in ip_list:
             logger.info(f"Found IP: {i}")
+
+    def init_button_list(self):
+        self.button_list = self.ip_list.copy()
+        self.button_list.append('Testing')
+        self.button_list.append('Retry connection')
+        # if len(self.ip_list) >= 2:
+        self.button_list.append('Configure all unconfigured')
+        self.button_list.append('Quit')
+
     
     def set_status(self, message, duration=3):
         self.status_message = message
@@ -53,14 +61,6 @@ class Menu:
         stdscr.addstr(start_y + 1, start_x, "| " + msg + " |")
         stdscr.addstr(start_y + 2, start_x, "+" + "-" * (box_width - 2) + "+")
         stdscr.attroff(curses.A_BLINK)
-
-    def init_button_list(self):
-        self.button_list = self.ip_list.copy()
-        self.button_list.append('Testing')
-        self.button_list.append('Retry connection')
-        if len(self.ip_list) >= 2:
-            self.button_list.append('Configure all unconfigured')
-        self.button_list.append('Quit')
 
     def update_main_buttons(self) -> None:
         """Get component information from each ip address and update the displayed text"""
@@ -141,13 +141,18 @@ class Menu:
                     self.buttons = {ip: "[...loading]" for ip in self.ip_list}
                     self.init_button_list()
                     threading.Thread(target=self.update_main_buttons, daemon=True).start()
-                elif self.buttons[selected] == "[...loading]":
+                elif selected == "[...loading]":
                     self.set_status("Please wait, until the component is connected", 3)
-                elif self.buttons[selected] == "Configure all unconfigured":
+                elif selected == "Configure all unconfigured":
                     if any(info == '[...loading]' for info in self.buttons.values()):
                         self.set_status("Please wait, until all components are connected", 3)
                     else:
-                        AutosetupMenu.run(stdscr, self.ip_list)
+                        try:
+                            AutosetupMenu(self.ip_list, self.all_components).run(stdscr)
+                        except DoubleConfiguration as e:
+                            self.set_status(str(e), 3)
+                        except TestException as e:
+                            self.set_status(str(e), 3)
                 else:
                     comp_if = CompIF()
                     comp_info = comp_if.get_component_info(selected)
