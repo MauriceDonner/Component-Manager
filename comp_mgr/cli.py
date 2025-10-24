@@ -136,8 +136,6 @@ class Menu:
                             self.set_status(str(e), 3)
                         except TestException as e:
                             self.set_status(str(e), 3)
-                        except Exception as e:
-                            self.set_status(str(e), 3)
                 else:
                     comp_if = CompIF()
                     comp_info = comp_if.get_component_info(selected)
