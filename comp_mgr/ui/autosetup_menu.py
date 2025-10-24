@@ -3,6 +3,7 @@ import logging
 import sys
 import time
 from comp_mgr.comp_if import CompIF
+from comp_mgr.config import NETWORK
 from comp_mgr.exceptions import TestException, DoubleConfiguration
 from comp_mgr.ui.common_ui import PopupMenu, draw_status_popup
 
@@ -11,33 +12,37 @@ logger = logging.getLogger(__name__)
 class AutosetupMenu:
     def __init__(self, ip_list, all_components):
         self.ip_list = ip_list
-        self.all_components = all_components
-        self.button_list = ["Test Popup", "Choose system", "Back", "Quit"]
+        self.button_list = []
+        self.menu_items = ["- Start Autosetup","- Change system", "- Back", "- Quit"]
         self.system = None
-        # Create a main config object in which EVERYTHING is saved
-        self.config = {"system": self.system}
         self.status_message = ""
         self.status_until = 0
 
+        # self.all_components = all_components
+        # while testing:
+        self.all_components = self.load_testing_dict()
+        self.ncomponents = len(all_components)
         logger.debug('=== ALL COMPONENTS ===')
-        for ip in self.ip_list:
-            logger.debug(f'{self.all_components[ip]}')
+        for component in self.all_components:
+            logger.debug(f'{self.all_components[component]}')
         
-        # Check whether to setup for SemDex or WMC ip space
-        if any(ip.startswith('192.168.0.') for ip in ip_list):
-            self.system = "SEMDEX"
-        elif any(ip.startswith('192.168.30.') for ip in ip_list):
-            if self.system == "SEMDEX":
-                logger.error("Both WMC and SemDex configurations found!")
-                raise DoubleConfiguration("Both WMC and SemDex configurations found!")
-            self.system = "WMC"
+        self.create_system_config()
     
     def set_status(self, msg, duration=3):
         self.status_message = msg
         self.status_until = time.time() + duration
 
     def draw(self, stdscr, current_row):
-        stdscr.addstr(0,0,f"Config: {self.config}")
+        button_list = []
+
+        # Create a button list from component list
+        for i, component in enumerate(self.all_components):
+            button = self.get_button_text(self.all_components[component])
+            button_list.append(button)
+        button_list += self.menu_items
+
+        self.button_list = button_list
+
         for i, row in enumerate(self.button_list):
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))
@@ -45,23 +50,22 @@ class AutosetupMenu:
                 stdscr.attroff(curses.color_pair(1))
             else:
                 stdscr.addstr(i + 2, 4, row)
+            
+        # For debugging, show the entire dict and system config
+        offset = self.ncomponents + len(self.menu_items) + 6
+        stdscr.addstr(offset, 4, f"Config: {self.config}")
+        for i, component in enumerate(self.all_components):
+            string = f'{self.all_components[component]['Type']}: '
+            for item in self.all_components[component]['Config_List']:
+                string += f'{item}: '
+                string += f"{self.all_components[component]['Config_List'][item]['enabled']} "
+
+            stdscr.addstr(offset + 1 + i, 4, string)
 
         draw_status_popup(stdscr, self.status_message, self.status_until)
         stdscr.refresh()
 
-    def choose_system(self, stdscr):
-        options = [
-            {"label": "WMC", "type": "selection", "key": "system"},
-            {"label": "SEMDEX", "type": "selection", "key": "system"}
-        ]
-        popup = PopupMenu(stdscr, "Choose System", options, self.config)
-        popup.run()
-
-        stdscr.clear()
-        stdscr.refresh()
-
     def run(self, stdscr):
-        button_list = self.button_list
         curses.curs_set(0)
         stdscr.keypad(True)
         curses.start_color()
@@ -77,20 +81,110 @@ class AutosetupMenu:
             self.draw(stdscr, current_row)
             key = stdscr.getch()
             if key == curses.KEY_UP:
-                current_row = (current_row - 1) % len(button_list)
+                current_row = (current_row - 1) % len(self.button_list)
             elif key == curses.KEY_DOWN:
-                current_row = (current_row + 1) % len(button_list)
+                current_row = (current_row + 1) % len(self.button_list)
             elif key == ord('\n'):
-                selected = button_list[current_row]
-                if selected == 'Test Popup': 
-                    self.set_status("POPUP TEST", 3)
-                    stdscr.refresh()
-                if selected == 'Choose system':
+                selected = self.button_list[current_row]
+                if selected == '- Change system':
                     self.choose_system(stdscr)
-                if selected == 'Back':
+                if selected == '- Back':
                     break
-                elif selected == 'Quit':
+                elif selected == '- Quit':
                     sys.exit(0)
-            
-        a = 5
-        if a == 5: raise TestException("This is a test exception")
+
+    def choose_system(self, stdscr):
+        options = [
+            {"label": "WMC", "type": "selection", "key": "system"},
+            {"label": "SEMDEX", "type": "selection", "key": "system"}
+        ]
+        popup = PopupMenu(stdscr, "Choose System", options, self.config)
+        popup.run()
+
+        stdscr.clear()
+        stdscr.refresh()
+
+    def choose_components(self):
+        for component in self.all_components:
+            if not component['System']:
+                component['Configure'] = True
+            else:
+                component['Configure'] = False
+        self.set_status(self.all_components)
+
+    def get_button_text(self, component: dict) -> str:
+        #TODO give each component a "Configure" flag that can be enabled/disabled
+        checkbox = f"[{'X' if component["Configure"] == True else ' '}]"
+        ip = component["IP"]
+        type = component["Type"]
+        display = [f'{checkbox} {type} [']
+
+        # Choose a target IP, if no target ip is selected, just take the default IP
+        if component["Config_List"]["Target_IP"]['enabled']:
+            target_ip = component["Config_List"]["Target_IP"]["IP"]
+        else:
+            target_ip = NETWORK[self.config["system"]][type]
+
+        # If an update is enabled, include it to the information page
+        if component["Configure"]:
+            if ip != target_ip:
+                display.append(f"{ip} -> {target_ip}")
+            for config_item in component["Config_List"]:
+                if component["Config_List"][config_item]['enabled']:
+                    display_text = component["Config_List"][config_item]['Display_Text']
+                    display.append(display_text) #TODO write Config_list into all_components
+        else: 
+            display.append(f"Do not configure")
+                
+        # Concatenate display entries to a single button
+        if len(display) > 1:
+            button = display[0]+", ".join(display[1:])+"]"
+        else:
+            button = display[0]+"Nothing to do...]"
+        
+        return button
+
+    def load_testing_dict(self) -> dict:
+        dict = {
+            '172.20.9.150': {
+                'IP': '172.20.9.150', 'System': None, 'Type': 'Prealigner', 'Name': 'ALN1', 'SN': 'ACE5CFG',
+                'CType': 'RA420_001', 'Firmware': '1.05A', 'Configure': True,
+                'Config_List': {
+                    'Target_IP': {'enabled': False, 'Display_Text': '', 'IP': None},
+                    'Spindle_Fix': {'enabled': True, 'Display_Text': 'Spindle offset fix'},
+                    'Speed_Fix': {'enabled': True, 'Display_Text': 'Low Speed fix'},
+                }
+            },
+            '172.20.9.100': {
+                'IP': '172.20.9.100', 'System': None, 'Type': 'Loadport_1', 'Name': 'STG1', 'SN': 'STG1503',
+                'CType': 'RV201-F07-000', 'Firmware': '1.13R', 'Configure': True,
+                'Config_List': {
+                    'Target_IP': {'enabled': False, 'Display_Text': '', 'IP': None},
+                }
+            },
+            '192.168.30.20': {
+                'IP': '192.168.30.20', 'System': 'WMC', 'Type': 'Robot', 'Name': 'TRB1', 'SN': 'TRB1385',
+                'CType': 'RR754', 'Firmware': '1.20Q', 'Configure': False, 
+                'Config_List': {
+                    'Target_IP': {'enabled': False, 'Display_Text': '', 'IP': None},
+                    'No_Interpolation': {'enabled': True, 'Display_Text': 'Disable Interpolation'},
+                    'Init_Rotate': {'enabled': True, 'Display_Text': 'Initialize Rotation axis'},
+                }
+            }
+        }
+
+        return dict
+
+    def create_system_config(self):
+        # Check whether to setup for SemDex or WMC ip space
+        if any(ip.startswith('192.168.0.') for ip in self.all_components):
+            self.system = "SEMDEX"
+            logger.info("SEMDEX IP found. Choosing System: SEMDEX")
+        elif any(ip.startswith('192.168.30.') for ip in self.all_components):
+            if self.system == "SEMDEX":
+                logger.error("Both WMC and SemDex configurations found!")
+                raise DoubleConfiguration("Both WMC and SemDex configurations found!")
+            logger.info("WMC IP found. Choosing System: WMC")
+            self.system = "WMC"
+        # Save this information to the global config
+        self.config = {"system": self.system}
