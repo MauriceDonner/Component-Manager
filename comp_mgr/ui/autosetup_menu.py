@@ -18,13 +18,17 @@ class AutosetupMenu:
         self.status_message = ""
         self.status_until = 0
 
-        # self.all_components = all_components
-        # while testing:
+        # Give each component an index to find it later in the button list
+        # self.all_components = {}
+        # for i, ip in enumerate(all_components.items()):
+        #     self.all_components[i] = all_components[ip]
+            
+        # While Testing
         self.all_components = self.load_testing_dict()
         self.ncomponents = len(all_components)
         logger.debug('=== ALL COMPONENTS ===')
-        for component in self.all_components:
-            logger.debug(f'{self.all_components[component]}')
+        for component in self.all_components.values():
+            logger.debug(f'{component}')
         
         self.create_system_config()
     
@@ -36,8 +40,8 @@ class AutosetupMenu:
         button_list = []
 
         # Create a button list from component list
-        for i, component in enumerate(self.all_components):
-            button = self.get_button_text(self.all_components[component])
+        for i, component in self.all_components.items():
+            button = self.get_button_text(component)
             button_list.append(button)
         button_list += self.menu_items
 
@@ -54,13 +58,18 @@ class AutosetupMenu:
         # For debugging, show the entire dict and system config
         offset = self.ncomponents + len(self.menu_items) + 6
         stdscr.addstr(offset, 4, f"Config: {self.config}")
-        for i, component in enumerate(self.all_components):
-            string = f'{self.all_components[component]['Type']}: '
-            for item in self.all_components[component]['Config_List']:
-                string += f'{item}: '
-                string += f"{self.all_components[component]['Config_List'][item]['enabled']} "
-
-            stdscr.addstr(offset + 1 + i, 4, string)
+        for i, component in self.all_components.items():
+            print(i,component)
+            config_items = []
+            display_name = f'{component['Type']}: '
+            for item, cfg in component['Config_List'].items():
+                enabled = cfg.get("enabled", False)
+                string = f'{item} = {enabled} '
+                config_items.append(string)
+            
+            display_config = " | ".join(config_items)
+            display_full = display_name+display_config
+            stdscr.addstr(offset + 1 + i, 4, display_full[:curses.COLS - 8])
 
         draw_status_popup(stdscr, self.status_message, self.status_until)
         stdscr.refresh()
@@ -86,9 +95,13 @@ class AutosetupMenu:
                 current_row = (current_row + 1) % len(self.button_list)
             elif key == ord('\n'):
                 selected = self.button_list[current_row]
-                if selected == '- Change system':
+                if selected.startswith('['):
+                    component = self.all_components[current_row]['CType']
+                    self.set_status(component)
+                    # self.configuration_menu(stdscr)
+                elif selected == '- Change system':
                     self.choose_system(stdscr)
-                if selected == '- Back':
+                elif selected == '- Back':
                     break
                 elif selected == '- Quit':
                     sys.exit(0)
@@ -105,12 +118,11 @@ class AutosetupMenu:
         stdscr.refresh()
 
     def choose_components(self):
-        for component in self.all_components:
+        for i, component in self.all_components.items():
             if not component['System']:
                 component['Configure'] = True
             else:
                 component['Configure'] = False
-        self.set_status(self.all_components)
 
     def get_button_text(self, component: dict) -> str:
         #TODO give each component a "Configure" flag that can be enabled/disabled
@@ -146,7 +158,7 @@ class AutosetupMenu:
 
     def load_testing_dict(self) -> dict:
         dict = {
-            '172.20.9.150': {
+            0: {
                 'IP': '172.20.9.150', 'System': None, 'Type': 'Prealigner', 'Name': 'ALN1', 'SN': 'ACE5CFG',
                 'CType': 'RA420_001', 'Firmware': '1.05A', 'Configure': True,
                 'Config_List': {
@@ -155,14 +167,14 @@ class AutosetupMenu:
                     'Speed_Fix': {'enabled': True, 'Display_Text': 'Low Speed fix'},
                 }
             },
-            '172.20.9.100': {
+            1: {
                 'IP': '172.20.9.100', 'System': None, 'Type': 'Loadport_1', 'Name': 'STG1', 'SN': 'STG1503',
                 'CType': 'RV201-F07-000', 'Firmware': '1.13R', 'Configure': True,
                 'Config_List': {
                     'Target_IP': {'enabled': False, 'Display_Text': '', 'IP': None},
                 }
             },
-            '192.168.30.20': {
+            2: {
                 'IP': '192.168.30.20', 'System': 'WMC', 'Type': 'Robot', 'Name': 'TRB1', 'SN': 'TRB1385',
                 'CType': 'RR754', 'Firmware': '1.20Q', 'Configure': False, 
                 'Config_List': {
@@ -177,10 +189,10 @@ class AutosetupMenu:
 
     def create_system_config(self):
         # Check whether to setup for SemDex or WMC ip space
-        if any(ip.startswith('192.168.0.') for ip in self.all_components):
+        if any(component['IP'].startswith('192.168.0.') for i, component in self.all_components.items()):
             self.system = "SEMDEX"
             logger.info("SEMDEX IP found. Choosing System: SEMDEX")
-        elif any(ip.startswith('192.168.30.') for ip in self.all_components):
+        elif any(component['IP'].startswith('192.168.30.') for i, component in self.all_components.items()):
             if self.system == "SEMDEX":
                 logger.error("Both WMC and SemDex configurations found!")
                 raise DoubleConfiguration("Both WMC and SemDex configurations found!")
