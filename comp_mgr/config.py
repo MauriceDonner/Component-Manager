@@ -94,5 +94,26 @@ CANCEL_CODES = {
     "0019": "Invalid work state"
 }
 
+# Add individual component settings here
+CONFIG_MENU_OPTIONS = {
+    'Common': [
+        {'label': 'Change target IP', 'type': 'value', 'key': 'Target_IP', 'value': None, 'enabled': False},
+        {'label': 'Basic settings', 'type': 'checkbox', 'key': 'Basic_Settings', 'enabled': True}
+    ],
+    'RA320_003': [
+        { 'label': 'Spindle tolerance fix', 'type': 'checkbox', 'key': 'Spindle_Fix', 'enabled': True},
+        { 'label': 'Slow speed mode', 'type': 'checkbox', 'key': 'Speed_Fix', 'enabled': False},
+    ],
+    'RR754': [
+        { 'label': 'No interpolation', 'type': 'checkbox', 'key': 'No_Interpolation', 'enabled': True},
+        { 'label': 'Init flip axis', 'type': 'checkbox', 'key': 'Init_Rotate', 'enabled': True},
+    ],
+    'RA420_001': [],
+    'RTS13': [],
+    'RV201-F07-000': [
+        { 'label': 'Set Body Number', 'type': 'selection', 'key': 'Set_Body_Number', 'value': None, 'enabled': False }
+    ]
+}
+
 class MESSAGES:
     SUCCESS = "Program ran successfully"

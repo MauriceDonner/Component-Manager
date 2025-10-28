@@ -35,6 +35,7 @@ class PopupMenu:
                           {"label": "Enable feature", "type": "checkbox", "key": "feature_enabled"}
                           {"label": "Timeout (s)", "type": "value", "key": "timeout"}
         :param config: dict – shared config dict that will be updated by the popup
+                        Example: all_components[0]['Config_List']]
         """
         self.stdscr = stdscr
         self.title = title
@@ -89,7 +90,7 @@ class PopupMenu:
             new_val = int(new_val) if new_val.isdigit() else new_val
         except ValueError:
             pass
-        self.config[key] = new_val
+        self.config[key]['value'] = new_val
 
     def run(self):
         """Run the popup"""
@@ -116,10 +117,10 @@ class PopupMenu:
             elif key == ord("\n"):
                 selected = self.options[self.current_row]
                 if selected["type"] == "checkbox":
-                    current_val = self.config.get(selected["key"], False)
-                    self.config[selected["key"]] = not current_val
+                    current_val = self.config[selected['key']].get('enabled', False)
+                    self.config[selected["key"]]['enabled'] = not current_val
                 elif selected["type"] == "value":
-                    self.edit_value(win, selected["key"])
+                    self.edit_value(win, selected["key"], selected['subkey'])
                 elif selected["type"] == "selection":
                     self.config[selected["key"]] = selected["label"]
                     break
