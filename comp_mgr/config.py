@@ -97,6 +97,7 @@ CANCEL_CODES = {
 # Add individual component settings here
 CONFIG_MENU_OPTIONS = {
     'Common': [
+        {'label': 'Configure Component', 'type': 'checkbox', 'key': 'Configure', 'enabled': False},
         {'label': 'Change target IP', 'type': 'value', 'key': 'Target_IP', 'value': None, 'enabled': False},
         {'label': 'Basic settings', 'type': 'checkbox', 'key': 'Basic_Settings', 'enabled': True}
     ],
@@ -111,7 +112,7 @@ CONFIG_MENU_OPTIONS = {
     'RA420_001': [],
     'RTS13': [],
     'RV201-F07-000': [
-        { 'label': 'Set Body Number', 'type': 'selection', 'key': 'Set_Body_Number', 'value': None, 'enabled': False }
+        { 'label': 'Set Body Number', 'type': 'sub_selection', 'options': [1,2,3], 'key': 'Set_Body_Number', 'value': None, 'enabled': False }
     ]
 }
 

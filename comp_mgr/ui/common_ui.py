@@ -39,7 +39,7 @@ class PopupMenu:
         """
         self.stdscr = stdscr
         self.title = title
-        self.options = options
+        self.options = options + [{'label': 'Back'}]
         self.config = config
         self.current_row = 0
 
@@ -57,9 +57,9 @@ class PopupMenu:
         # Draw all options
         for i, opt in enumerate(self.options):
             label = opt["label"]
-            key = opt["key"]
-            val = self.config.get(key, False) # Returns `False` if key doesn't exist
-            typ = opt["type"]
+            key = opt.get("key", None)
+            val = self.config.get(key, False)
+            typ = opt.get("type", None)
 
             if typ == "checkbox":
                 display = f"[{'X' if val else ' '}] {label}"
@@ -79,6 +79,50 @@ class PopupMenu:
 
         win.refresh()
 
+    def draw_subwindow(self, title, options):
+        """Draws a smaller popup subwindow in which a selection can be made"""
+        self.current_row = 0
+        height, width = self.stdscr.getmaxyx()
+        win_height = len(options)+4
+        win_width = max(len(title),max(len(str(option)) for option in options))+4
+        start_y = (height - win_height) // 2
+        start_x = (width - win_width) // 2
+
+        win = curses.newwin(win_height, win_width, start_y, start_x)
+        win.keypad(True)
+
+        while True:
+            win.clear()
+            win.box()
+            # Title
+            win.attron(curses.A_BOLD)
+            win.addstr(0, 2, f" {title} ")
+            win.attroff(curses.A_BOLD)
+
+            # Draw all options from the list
+            for i, opt in enumerate(options):
+                display = f"-> {opt}"
+
+                if i == self.current_row:
+                    win.attron(curses.color_pair(1))
+                    win.addstr(i + 2, 2, display[:width - 4])
+                    win.attroff(curses.color_pair(1))
+                else:
+                    win.addstr(i + 2, 2, display[:width - 4])
+
+            win.refresh()
+
+            key = win.getch()
+            if key == curses.KEY_UP:
+                self.current_row = (self.current_row - 1) % len(options)
+            elif key == curses.KEY_DOWN:
+                self.current_row = (self.current_row + 1) % len(options)
+            elif key == ord("\n"):
+                selected = options[self.current_row]
+                return selected
+            elif key == 27:  # ESC to exit
+                break
+
     def edit_value(self, win, key):
         """Prompt the user to enter a new value"""
         height, width = win.getmaxyx()
@@ -89,6 +133,7 @@ class PopupMenu:
         try:
             new_val = int(new_val) if new_val.isdigit() else new_val
         except ValueError:
+            logger.warning(f"ValueError in common_ui -> edit_value: '{new_val}' not parsed correctly")
             pass
         self.config[key]['value'] = new_val
 
@@ -116,13 +161,23 @@ class PopupMenu:
                 self.current_row = (self.current_row + 1) % len(self.options)
             elif key == ord("\n"):
                 selected = self.options[self.current_row]
-                if selected["type"] == "checkbox":
-                    current_val = self.config[selected['key']].get('enabled', False)
-                    self.config[selected["key"]]['enabled'] = not current_val
-                elif selected["type"] == "value":
-                    self.edit_value(win, selected["key"], selected['subkey'])
-                elif selected["type"] == "selection":
-                    self.config[selected["key"]] = selected["label"]
+                label = selected.get("label", None)
+                type = selected.get("type", None)
+                config_entry = selected.get("key", None)
+                if type == "checkbox":
+                    current_val = self.config[config_entry]['enabled']
+                    self.config[config_entry]['enabled'] = not current_val
+                elif type == "value":
+                    self.edit_value(win, config_entry)
+                elif type == "selection":
+                    self.config[config_entry] = label
+                    break
+                elif type == 'sub_selection':
+                    current_row_tmp = self.current_row
+                    value = self.draw_subwindow(label, selected['options'])
+                    self.config[config_entry]['value'] = value
+                    self.current_row = current_row_tmp
+                else:
                     break
             elif key == 27:  # ESC to exit
                 break
