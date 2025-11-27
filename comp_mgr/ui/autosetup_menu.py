@@ -20,8 +20,6 @@ class AutosetupMenu:
         self.status_until = 0
 
         self.initialize_component_dict(component_dict)
-        for i, component in self.all_components.items():
-            logger.debug(f'Initial Status: {self.all_components[i]["Config_List"]}')
 
     def set_status(self, msg, duration=3):
         self.status_message = msg
@@ -48,7 +46,7 @@ class AutosetupMenu:
             
         # For debugging, show the entire dict and system config
         offset = self.ncomponents + len(self.menu_items) + 4
-        stdscr.addstr(offset, 4, f"Config: {self.config}")
+        stdscr.addstr(offset, 4, f"Config: {self.system}")
         for i, component in self.all_components.items():
             config_items = []
             display_name = f'{component['Type']}: '
@@ -94,22 +92,22 @@ class AutosetupMenu:
                 elif selected == '- Quit':
                     sys.exit(0)
                 else:
-                    self.set_status(self.all_components[current_row]['Type'])
                     self.configure_component(stdscr, current_row)
+                    self.set_status(f"{self.all_components[current_row]['Type']} config updated")
 
     def choose_system(self, stdscr):
-        options = [
-            {"label": "WMC", "type": "selection", "key": "system"},
-            {"label": "SEMDEX", "type": "selection", "key": "system"}
-        ]
-        popup = PopupMenu(stdscr, "Choose System", options, self.config)
-        popup.run()
+        options = {
+            'WMC': {"label": "WMC", "type": "selection", "key": "system"},
+            'SEMDEX': {"label": "SEMDEX", "type": "selection", "key": "system"}
+        }
+        popup = PopupMenu(stdscr, "Choose System", options)
+        self.system = popup.run()
 
         stdscr.clear()
         stdscr.refresh()
 
         for i, component in self.all_components.items():
-            target_ip = NETWORK[self.config["system"]][component["Type"]]
+            target_ip = NETWORK[self.system][component["Type"]]
             if component['IP'] == target_ip:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = False
             else:
@@ -120,9 +118,8 @@ class AutosetupMenu:
         This method contains all different steps of configuration based on which component is fed to it.
         Data for each component is stored in config.py
         """
-        component = self.all_components[current_row]
-        options = CONFIG_MENU_OPTIONS['Common']+CONFIG_MENU_OPTIONS[component['CType']]
-        popup = PopupMenu(stdscr, "Select Configuration", options, self.all_components[current_row]['Config_List'])
+        component_dict = self.all_components[current_row]['Config_List']
+        popup = PopupMenu(stdscr, "Select Configuration", component_dict)
         popup.run()
         stdscr.clear()
         stdscr.refresh()
@@ -137,9 +134,9 @@ class AutosetupMenu:
         display = [f'{checkbox} {type} [']
 
         if component["Config_List"]["Target_IP"]['enabled']:
-            target_ip = component["Config_List"]["Target_IP"]["IP"]
+            target_ip = component["Config_List"]["Target_IP"]["value"]
         else:
-            target_ip = NETWORK[self.config["system"]][component["Type"]]
+            target_ip = NETWORK[self.system][component["Type"]]
 
         # If an update is enabled, include it to the information page
         if component['Config_List']['Configure']['enabled']:
@@ -172,8 +169,11 @@ class AutosetupMenu:
                 raise DoubleConfiguration("Both WMC and SemDex configurations found!")
             logger.info("WMC IP found. Choosing System: WMC")
             self.system = "WMC"
-        # Save this information to the global config
-        self.config = {"system": self.system}
+
+        # Set the target IP
+        for component in self.all_components.values():
+            target_ip = NETWORK[self.system][component['Type']]
+            component['Config_List']['Target_IP']['value'] = target_ip
     
     def check_loadport_configuration(self):
         """
@@ -182,32 +182,34 @@ class AutosetupMenu:
         2. There are multiple unconfigured loadports connected -> Throw an exception due to possible IP conflicts
         (Later we could implement multi-LP setup)
         """
-        configured_loadports = [False, False, False]
-        unconfigured_loadport_present = False
-        unconf_index = []
+        configured = [False, False, False]
+        unconfigured = []
         body_number = 1
-        for i, component in self.all_components.items():
+        for idx, component in self.all_components.items():
+            ctype = component["Type"]
             # Check, if there are any configured loadports within the system
-            if component["Type"].startswith('Loadport_'):
+            if ctype.startswith('Loadport_'):
                 lp_no = int(component['Type'][-1])
-                configured_loadports[lp_no-1] = True
-            # Also check, whether there is an unconfigured loadport
-            if component["Type"] == 'Loadport (Unconfigured)':
-                unconfigured_loadport_present = True
-                unconf_index.append(i)
+                configured[lp_no-1] = True
+                component['Config_List']['Set_Body_Number']['initial'] = lp_no
+            elif ctype == 'Loadport (Unconfigured)':
+                unconfigured.append(idx)
 
-        if len(unconf_index) > 1:
-            raise MultipleUnconfiguredLoadports("Only connect one unconfigured loadport at once to avoid IP conflicts")
+        if len(unconfigured) > 1:
+            raise MultipleUnconfiguredLoadports(
+                "Only connect one unconfigured loadport at once to avoid IP conflicts"
+                )
 
-        if unconfigured_loadport_present:
-            if any(loadport == True for loadport in configured_loadports):
-                # Set the smallest available body number
-                for i in range(3):
-                    if not configured_loadports[i]:
-                        body_number = i+1
-                        break
-            self.all_components[unconf_index[0]]['Config_List']['Set_Body_Number']['value'] = body_number
-            self.all_components[unconf_index[0]]['Type'] = f'Loadport_{body_number}'
+        if unconfigured:
+            logger.debug(f"{configured}")
+            free_body = next(
+                (i+1 for i, is_configured in enumerate(configured) if not is_configured),1
+                )
+            idx = unconfigured[0]
+            unconf_component = self.all_components[idx]
+            unconf_component['Config_List']['Set_Body_Number']['value'] = free_body
+            unconf_component['Config_List']['Set_Body_Number']['enabled'] = True
+            unconf_component['Type'] = f'Loadport_{free_body}'
     
     def initialize_component_dict(self, component_dict):
         # all_components = component_dict
@@ -230,6 +232,7 @@ class AutosetupMenu:
                 config_list = CONFIG_MENU_OPTIONS['Common'] + CONFIG_MENU_OPTIONS[type]
                 self.all_components[i]['Config_List'] = {}
                 for config_item in config_list:
+                    # Use deepcopy in order not to change the original dict in config.py
                     self.all_components[i]['Config_List'][config_item['key']] = copy.deepcopy(config_item)
             else: 
                 logger.warning(f"Component {all_components[ip]['CType']} not implemented in autosetup")
@@ -245,13 +248,9 @@ class AutosetupMenu:
         
         self.create_system_config()
 
-        logger.debug(f'{self.all_components}')
         for i, component in self.all_components.items():
-            target_ip = NETWORK[self.config["system"]][component["Type"]]
+            target_ip = NETWORK[self.system][component["Type"]]
             if component['IP'] != target_ip:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = True
             else:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = False
-
-        for i, component in self.all_components.items():
-            logger.debug(f'Before Initial Status: {self.all_components[i]["Config_List"]}')

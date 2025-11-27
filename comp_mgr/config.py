@@ -98,12 +98,12 @@ CANCEL_CODES = {
 CONFIG_MENU_OPTIONS = {
     'Common': [
         {'label': 'Configure Component', 'type': 'checkbox', 'key': 'Configure', 'enabled': False},
-        {'label': 'Change target IP', 'type': 'value', 'key': 'Target_IP', 'value': None, 'enabled': False},
+        {'label': 'Change IP', 'type': 'value', 'key': 'Target_IP', 'value': None, 'enabled': False},
         {'label': 'Basic settings', 'type': 'checkbox', 'key': 'Basic_Settings', 'enabled': True}
     ],
     'RA320_003': [
         { 'label': 'Spindle tolerance fix', 'type': 'checkbox', 'key': 'Spindle_Fix', 'enabled': True},
-        { 'label': 'Slow speed mode', 'type': 'checkbox', 'key': 'Speed_Fix', 'enabled': False},
+        { 'label': 'Slow mode (Ext. notch)', 'type': 'checkbox', 'key': 'Speed_Fix', 'enabled': False},
     ],
     'RR754': [
         { 'label': 'No interpolation', 'type': 'checkbox', 'key': 'No_Interpolation', 'enabled': True},
@@ -112,7 +112,7 @@ CONFIG_MENU_OPTIONS = {
     'RA420_001': [],
     'RTS13': [],
     'RV201-F07-000': [
-        { 'label': 'Set Body Number', 'type': 'sub_selection', 'options': [1,2,3], 'key': 'Set_Body_Number', 'value': None, 'enabled': False }
+        { 'label': 'Set Body Number', 'type': 'sub_selection', 'options': [1,2,3], 'key': 'Set_Body_Number', 'value': None, 'initial': None, 'enabled': False }
     ]
 }
 

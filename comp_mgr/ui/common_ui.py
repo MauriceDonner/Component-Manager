@@ -26,7 +26,7 @@ def draw_status_popup(stdscr, msg: str, until):
         pass # Ignore if terminal is too small
 
 class PopupMenu:
-    def __init__(self, stdscr, title, options, config):
+    def __init__(self, stdscr, title, config):
         """
         :param stdscr: curses main window
         :param title: str – window title
@@ -39,8 +39,8 @@ class PopupMenu:
         """
         self.stdscr = stdscr
         self.title = title
-        self.options = options + [{'label': 'Back'}]
         self.config = config
+        self.items = list(config.values()) + [{'label': 'Back'}]
         self.current_row = 0
 
     def draw_window(self, win):
@@ -53,20 +53,19 @@ class PopupMenu:
         win.attron(curses.A_BOLD)
         win.addstr(0, 2, f" {self.title} ")
         win.attroff(curses.A_BOLD)
-
         # Draw all options
-        for i, opt in enumerate(self.options):
-            label = opt["label"]
-            key = opt.get("key", None)
-            val = self.config.get(key, False)
-            typ = opt.get("type", None)
-
+        for i, cfg in enumerate(self.items):
+            label = cfg["label"]
+            typ = cfg.get("type", None)
+            
             if typ == "checkbox":
-                display = f"[{'X' if val else ' '}] {label}"
+                display = f"[{'X' if cfg['enabled'] else ' '}] {label}"
             elif typ == "value":
-                display = f"{label}: {val}"
+                display = f"{label}: {cfg.get('value','')}"
             elif typ == "selection":
                 display = f"-> {label}"
+            elif typ == "sub_selection":
+                display = f"{label}: {cfg.get('value','')}"
             else:
                 display = label
 
@@ -135,12 +134,17 @@ class PopupMenu:
         except ValueError:
             logger.warning(f"ValueError in common_ui -> edit_value: '{new_val}' not parsed correctly")
             pass
-        self.config[key]['value'] = new_val
+        if new_val == '':
+            self.config[key]['value'] = None
+            self.config[key]['enabled'] = False
+        else:
+            self.config[key]['value'] = new_val
+            self.config[key]['enabled'] = True
 
     def run(self):
         """Run the popup"""
         height, width = self.stdscr.getmaxyx()
-        win_height = len(self.options) + 6
+        win_height = len(self.items) + 6
         win_width = width // 2
         start_y = (height - win_height) // 2
         start_x = (width - win_width) // 2
@@ -156,11 +160,12 @@ class PopupMenu:
             key = win.getch()
 
             if key == curses.KEY_UP:
-                self.current_row = (self.current_row - 1) % len(self.options)
+                self.current_row = (self.current_row - 1) % len(self.items)
             elif key == curses.KEY_DOWN:
-                self.current_row = (self.current_row + 1) % len(self.options)
+                self.current_row = (self.current_row + 1) % len(self.items)
             elif key == ord("\n"):
-                selected = self.options[self.current_row]
+                selected = self.items[self.current_row]
+                logger.debug(selected)
                 label = selected.get("label", None)
                 type = selected.get("type", None)
                 config_entry = selected.get("key", None)
@@ -170,11 +175,14 @@ class PopupMenu:
                 elif type == "value":
                     self.edit_value(win, config_entry)
                 elif type == "selection":
-                    self.config[config_entry] = label
-                    break
+                    return label
                 elif type == 'sub_selection':
                     current_row_tmp = self.current_row
                     value = self.draw_subwindow(label, selected['options'])
+                    if value != self.config[config_entry]['initial']:
+                        self.config[config_entry]['enabled'] = True
+                    else:
+                        self.config[config_entry]['enabled'] = False
                     self.config[config_entry]['value'] = value
                     self.current_row = current_row_tmp
                 else:
