@@ -58,6 +58,7 @@ class ComponentMenu:
             raise Exception("Other components than Rorze have not been implemented yet")
 
         button_list_limited = ["Back", "Quit"]
+        #TODO Change this feature list to be component-dependent like in the autosetup menu
         buttons = ["Get Status", "Read Data", "Rotary Switch"]
         button_list = buttons + button_list_limited
         current_row = 0

@@ -38,6 +38,13 @@ class CompIF:
 
         alive = []
 
+        n_workers = len(ips)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
+            results = executor.map(self.ping, ips)
+            for result in results:
+                if result:
+                    alive.append(result)
+
         # Choose system preset
         if any(ip.startswith('192.168.0.') for ip in alive):
             self.system = "SEMDEX" 
@@ -46,12 +53,6 @@ class CompIF:
                 raise Exception("Both SemDex and WMC configurations found!")
             self.system = "WMC"
 
-        n_workers = len(ips)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
-            results = executor.map(self.ping, ips)
-            for result in results:
-                if result:
-                    alive.append(result)
         return alive
 
     # Check which type of component is connected
@@ -139,7 +140,6 @@ class CompIF:
             return comp_info
 
         if comp_info["Type"] == "Simulation":
-            time.sleep(2)
             comp_info["Name"] = 'SIM1'
             comp_info["SN"] = 'SIM1234'
             comp_info["CType"] = 'SIM_COMPONENT'

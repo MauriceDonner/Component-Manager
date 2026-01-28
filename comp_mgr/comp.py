@@ -16,6 +16,8 @@ from typing import TextIO, Union
 logger = logging.getLogger(__name__)
 
 class Component:
+    TIMEOUT = 3.0
+    MOTION_TIMEOUT = 15.0
 
     def __init__(self, comp_info: dict):
         self.ip = comp_info["IP"]
@@ -31,7 +33,7 @@ class Component:
         self.lock = threading.Lock()
         self.busy = False
     
-    def establish_connection(self, port=12100, retries=1, timeout=3):
+    def establish_connection(self, port=12100, retries=1):
         """
         General attempt to establish connection to a component.
         This method might never be used since the different components have their own class
@@ -40,7 +42,7 @@ class Component:
         self.status = "Connecting..."
         logger.info(f"Connecting to {self.display_name}...")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(timeout)
+        self.sock.settimeout(self.TIMEOUT)
 
         for i in range(retries+1):
 
@@ -98,13 +100,16 @@ class Component:
                 # TODO Cut the Component name. Maybe include it again for non-rorze.
                 message = read #.split('.')[1]
                 # Simulation always treats it like motion command
-                if "SIMULATION" in self.type:
-                    read = self.sock.recv(1024)
-                    logger.debug(f"Receive: {read}")
-                    message = read 
-            except socket.timeout:
-                self.status = "ERROR: Timeout"
-                logger.error(f"Timeout")
+                self.sock.settimeout(self.MOTION_TIMEOUT)
+                self.status = "Waiting for motion..."
+                try:
+                    if "SIMULATION" in self.type:
+                        read = self.sock.recv(1024)
+                        logger.debug(f"Receive: {read}")
+                        message = read 
+                except socket.timeout:
+                    logger.error("Motion timed out.")
+                self.sock.settimeout(self.TIMEOUT)
             except socket.error as e:
                 self.status = f"Socket error: {e}"
                 logger.error(f"Socket error: {e}")
@@ -127,7 +132,7 @@ class Component:
             logger.debug(f"Reading data... {message}")
             # Wait until reading finishes finishes
             try: 
-                self.sock.settimeout(120)
+                self.sock.settimeout(self.TIMEOUT)
                 read = str(self.sock.recv(buffer))[2:-3]
                 logger.debug(f"Reading data... {message}")
                 message = read #.split('.')[1]
@@ -157,7 +162,7 @@ class Component:
             logger.debug(f"Component is in motion... {message}")
             # Wait until motion finishes
             try: 
-                self.sock.settimeout(120)
+                self.sock.settimeout(self.MOTION_TIMEOUT)
                 read = str(self.sock.recv(buffer))[2:-3]
                 message = read #.split('.')[1]
             except socket.timeout:
@@ -205,7 +210,7 @@ class Rorze(Component):
         self.status = "Connecting..."
         logger.info(f"Connecting to {self.display_name}...")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(5)
+        self.sock.settimeout(self.TIMEOUT)
 
         for i in range(retries+1):
 
@@ -239,20 +244,21 @@ class Rorze(Component):
             # finally:
             #     self.busy = False
     
-    def read_name(self, type: str):
+    def read_name(self):
         """
         Rorze components will have a prefix that contain type information.
         This prefix has to have a character removed, such that commands can be sent.
         Example: extended_type="eTRB0" -> type="TRB0"
         """
-        if type == "SIMULATIONeTRB0":
-            name = type
+        if self.type == "SIMULATIONeTRB0":
+            name = self.type
         else:
-            name = "o"+type[-4:]
+            name = "o"+self.type[-4:]
         return name
 
     def origin_search(self, p1: int=0, p2: int=0):
-        command = f"o{self.name}.ORGN({p1},{p2})"
+        name = self.read_name()
+        command = f"{name}.ORGN({p1},{p2})"
         message = self.send_and_read_motion(command)
         self.status = f"Origin search completed: {message}"
 
@@ -262,7 +268,8 @@ class Rorze(Component):
         self.status = f"Rotary switch position: {message}"
 
     def get_status(self):
-        command = f"o{self.name}.STAT"
+        name = self.read_name()
+        command = f"{name}.STAT"
         message = self.send_and_read(command)
         self.status = f"{message}"
 
@@ -462,7 +469,7 @@ class Rorze(Component):
             index+=1
             filename = f"{self.sn}_{ts}_{index}"
             logger.warning(f"File exists! Changing filename to {filename}")
-            if os.path.exists(filename):
+            if not os.path.exists(filename):
                 break
 
         try: 

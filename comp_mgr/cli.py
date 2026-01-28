@@ -25,21 +25,21 @@ class Menu:
 
     def __init__(self, ip_list: list):
         self.ip_list = ip_list.copy()
-        self.buttons = {ip: "[...loading]" for ip in ip_list}
+        # Simulate a robot when simulation is selected
+        self.buttons = {ip: "[...loading]" for ip in self.ip_list}
         self.status_message = None
         self.status_until = 0
         logger.info(40 * "=" + " PROGRAM START" + 40 * "=")
-        for i in ip_list:
+        for i in self.ip_list:
             logger.info(f"Found IP: {i}")
 
     def init_button_list(self):
         self.button_list = self.ip_list.copy()
         self.button_list.append('Testing')
         self.button_list.append('Retry connection')
-        # if len(self.ip_list) >= 2:
+        #TODO if len(self.ip_list) >= 2:
         self.button_list.append('Configure all unconfigured')
         self.button_list.append('Quit')
-
     
     def set_status(self, message, duration=3):
         self.status_message = message
@@ -73,6 +73,7 @@ class Menu:
             self.buttons[ip] = info
 
         for ip in self.ip_list:
+            #TODO Check if threading here is unnecessary since you also start threading in the previous call
             threading.Thread(target=update_button, args=(ip,),daemon=True).start()
 
     def draw_main_menu(self, stdscr, current_row):
