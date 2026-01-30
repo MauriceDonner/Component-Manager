@@ -61,7 +61,7 @@ class Menu:
 
             # Information Cascade - Reduce infomation if not available
             if firmware:
-                info = f"{system} {type} {name} {sn} v{firmware} \u221A"
+                info = f"{system} {type} {name} {sn} v{firmware} \u2713"
             elif name:
                 info = f"{system} {type} {name} {sn}"
             elif system:
