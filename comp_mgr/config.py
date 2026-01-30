@@ -116,5 +116,26 @@ CONFIG_MENU_OPTIONS = {
     ]
 }
 
+# TODO Implement sub menus and component based commands in the component menu
+COMPONENT_MENU_OPTIONS = {
+    'Common': [
+        {'label': 'Get Status', 'type': 'command', 'action': 'get_status'},
+        {'label': 'Change IP', 'type': 'value', 'action': 'change_IP', 'action_factory': 'change_IP_popup'},
+        {'label': 'Set Host IP', 'type': 'value', 'action': 'set_host_IP', 'action_factory': 'change_host_popup'},
+        {'label': 'Set TCP/IP Port', 'type': 'value', 'action': 'set_host_port', 'action_factory': 'change_port_popup'},
+        {'label': 'Set Log Host IP', 'type': 'value', 'action': 'set_log_host', 'action_factory': 'change_log_host_popup'},
+        {'label': 'Create backup (Read Data)', 'type': 'command', 'action': 'read_data'}
+    ],
+    'SIM_COMPONENT': [
+        {'label': 'Read External Sensors (GAIO)', 'type': 'command', 'action': 'GAIO'},
+        {'label': 'Set Automatic Status Reports ON (SAIO)', 'type': 'command', 'action': 'SAIO_on'},
+        {'label': 'Set Automatic Status Reports OFF (SAIO)', 'type': 'command', 'action': 'SAIO_off'},
+        {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'}
+    ]
+}
+
+        #TODO Implement Toggle menu ? (overkill for now)
+        # {'label': 'Toggle Sensors ON/OFF', 'type': 'toggle_menu', 'options': ['Upper Arm Laser', 'Lower Arm Laser'], 'key': None}
+
 class MESSAGES:
     SUCCESS = "Program ran successfully"

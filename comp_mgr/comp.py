@@ -1,7 +1,13 @@
 """
 Component Module
 
-All Component data and methods is stored in these class instances
+All Component data and methods are stored in these class instances
+
+When new components are added, they must be implemented individually here for:
+- setting IP address (change_IP)
+- setting TCP/IP port (set_host_port)
+- setting log host (set_log_host)
+- reading a backup (read_data)
 """
 import logging
 import json
@@ -9,15 +15,15 @@ import os
 import socket
 import threading
 import time
-from comp_mgr.config import NETWORK
 from datetime import datetime
 from typing import TextIO, Union
+from comp_mgr.config import NETWORK
 
 logger = logging.getLogger(__name__)
 
 class Component:
     TIMEOUT = 3.0
-    MOTION_TIMEOUT = 15.0
+    MOTION_TIMEOUT = 5.0
 
     def __init__(self, comp_info: dict):
         self.ip = comp_info["IP"]
@@ -41,6 +47,7 @@ class Component:
 
         self.status = "Connecting..."
         logger.info(f"Connecting to {self.display_name}...")
+        logger.debug(f"IP: {self.ip}, System: {self.system}, Name: {self.display_name}, Type: {self.type}")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(self.TIMEOUT)
 
@@ -80,7 +87,6 @@ class Component:
                 break  # connection closed
             data += chunk
             if (b"\r" in chunk):
-                logger.debug('Escape sequence found')
                 break
         return data.decode('utf-8').strip()
 
@@ -194,7 +200,7 @@ class Rorze(Component):
         # Serial number of the component (if it exists)
         self.sn = comp_info["SN"]
         # Component Type (e.g. "RA320_003")
-        self.ctype = comp_info["CType"]
+        self.identifier = comp_info["Identifier"]
         # Firmware Version
         self.firmware = comp_info["Firmware"]
 
@@ -250,28 +256,91 @@ class Rorze(Component):
         This prefix has to have a character removed, such that commands can be sent.
         Example: extended_type="eTRB0" -> type="TRB0"
         """
-        if self.type == "SIMULATIONeTRB0":
-            name = self.type
+        if self.name == "SIM1":
+            name = "SIMULATIONeTRB0"
         else:
-            name = "o"+self.type[-4:]
+            name = "o"+self.name[-4:]
         return name
 
     def origin_search(self, p1: int=0, p2: int=0):
-        name = self.read_name()
-        command = f"{name}.ORGN({p1},{p2})"
+        command = f"{self.read_name()}.ORGN({p1},{p2})"
         message = self.send_and_read_motion(command)
         self.status = f"Origin search completed: {message}"
 
     def get_rotary_switch_value(self):
-        command = f"o{self.name}.GTDT[3]"
-        message = self.send_and_read(command).split(":")[1]
+        command = f"{self.read_name()}.GTDT[3]"
+        message = self.send_and_read(command)
         self.status = f"Rotary switch position: {message}"
 
     def get_status(self):
-        name = self.read_name()
-        command = f"{name}.STAT"
+        command = f"{self.read_name()}.STAT"
         message = self.send_and_read(command)
         self.status = f"{message}"
+
+    def change_IP(self, ip):
+        # Implement different component types here
+        if self.identifier in ["RR754", "RTS13", "RV201-F07-000", "SIM_COMPONENT"]:
+            command = f"{self.read_name()}.STDT[1]={ip}"
+        elif self.identifier in ["RA320_003", "RA420_001"]: #TODO Verify RA420
+            command = f"{self.read_name()}.DEQU.STDT[3]={ip}"
+        else:
+            status = f"Component type {self.identifier} has not been implemented"
+            self.status = status
+            logger.error(status)
+            return
+
+        message = self.send_and_read(command)
+        self.status = f"IP set to {ip}. Please restart the component. ({message})"
+
+    def set_host_IP(self,ip):
+        command = f"{self.read_name()}.DEQU.STDT[1]={ip}"
+        self.send_and_read(command)
+        self.status = f"Host IP set to {ip}."
+    
+    def set_host_port(self,port):
+        if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
+            command = f"{self.read_name()}.DEQU.STDT[68]={port}"
+            self.send_and_read(command)
+        elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
+            command = f"{self.read_name()}.DEQU.STDT[2]={port}"
+            self.send_and_read(command)
+        else:
+            status = f"Component type {self.identifier} has not been implemented"
+            self.status = status
+            logger.error(status)
+            return
+
+        self.status = f"TCP/IP port set to {port}."
+        
+    def set_log_host(self,ip):
+        if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
+            command = f"{self.read_name()}.DEQU.STDT[69]={ip}"
+            self.send_and_read(command)
+        elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
+            command = f"{self.read_name()}.DEQU.STDT[4]={ip}"
+            self.send_and_read(command)
+        else:
+            status = f"Component type {self.identifier} has not been implemented"
+            self.status = status
+            logger.error(status)
+            return
+
+        self.status = f"Log host set to {ip}."
+
+    def GAIO(self):
+        command = f"{self.read_name()}.GAIO"
+        message = self.send_and_read(command)
+        self.status = f"Response logged."
+
+    def SAIO_on(self):
+        command = f"{self.read_name()}.SAIO(00000000000000000000000100000010,00000000000000000000000000000000,0000000000)"
+        message = self.send_and_read(command)
+        self.status = f"Automatic status ON. Response logged."
+
+    def SAIO_off(self):
+        command = f"{self.read_name()}.SAIO(00000000000000000000000000000000,00000000000000000000000000000000,0000000000)"
+        message = self.send_and_read(command)
+        self.status = f"Automatic status OFF. Response logged."
 
     def read_data(self):
         """
@@ -279,16 +348,26 @@ class Rorze(Component):
         Rorze maintenance software. It is slightly different for each component.
         """
 
-        def read_block(self, block_name: str, n: Union[int, list[int]], command: str, file: TextIO) -> None:
+        def read_block(self,
+                       block_name: str,
+                       n: Union[int, list[int]],
+                       set_command: str,
+                       file: TextIO,
+                       add_brackets: bool=False) -> None:
+            """"Reads one block of component data, like 5 lines of DRCS for the Robot"""
             name = self.name
             buffer = 2**20
-            get_command = f"G{command[1:]}" # Turns STDT into GTDT
+            get_command = f"G{set_command[1:]}" # Turns STDT into GTDT
+
+            # Turn the input of n into a list, even if it has just one element
             if isinstance(n, int):
                 block_range = range(n)
             else:
                 block_range = n
+
             if len(block_range) == 1:
                 block = self.send_and_read(f"o{name}.{block_name}.{get_command}",buffer)
+
                 # Cut Prefix from block
                 prefix = f"a{name}.{block_name}.{get_command}:"
                 if not prefix == block[:len(prefix)]:
@@ -296,11 +375,21 @@ class Rorze(Component):
                     logger.error(e)
                     raise Exception(e)
                 block = block[len(prefix):]
-                print(f"{block_name}.{command}={block}", file=file)
+
+                # Add [0], if this is required (Lineartrack does this) #TODO Test this!
+                if add_brackets:
+                    set_string = f"{block_name}.{set_command}[0]={block}"
+                else:
+                    set_string = f"{block_name}.{set_command}={block}"
+                
+                # Write to file
+                print(set_string, file=file)
                 # file.write(f"{block_name}.{command}={block}\n")
+
             else:
                 for i in block_range:
                     block = self.send_and_read(f"o{name}.{block_name}.{get_command}[{i}]",buffer)
+
                     # Cut Prefix from block
                     prefix = f"a{name}.{block_name}.{get_command}:"
                     if not prefix == block[:len(prefix)]:
@@ -308,7 +397,9 @@ class Rorze(Component):
                         logger.error(e)
                         raise Exception(e)
                     block = block[len(prefix):]
-                    print(f"{block_name}.{command}[{i}]={block}", file=file)
+
+                    # Write to file
+                    print(f"{block_name}.{set_command}[{i}]={block}", file=file)
                     # file.write(f"{block_name}.{command}={block}\n")
 
         def read_data_robot(self,filename):
@@ -456,6 +547,19 @@ class Rorze(Component):
                 read_block(self, "DPRM", 64, "STDT", backup)
                 read_block(self, "DCST", 1, "STDT", backup)
                 read_block(self, "DE84", 1, "STDT", backup)
+        
+        def read_data_lineartrack(self,filename):
+            with open(f"{filename}.dat", "w") as backup:
+                read_block(self,"DEQU", 1, "STDT", backup)
+                read_block(self,"DRES", 1, "STDT", backup)
+                read_block(self,"DRCI", 1, "STDT", backup, add_brackets=True)
+                read_block(self,"DRCS", 1, "STDT", backup, add_brackets=True)
+                read_block(self,"DRCH", 1, "STDT", backup, add_brackets=True)
+                read_block(self,"DMNT", 1, "STDT", backup, add_brackets=True)
+                read_block(self,"XAX1", [0,1,2,8,9,10,11,12,13,14,15,16,17,18,19,40], "STDT", backup)
+                read_block(self,"XAX1", 1, "SPRM", backup)
+                read_block(self,"XAX1", 16, "SEPM", backup)
+                read_block(self,"DTBL", 400, "STDA", backup)
 
         # Timestamp
         ts = datetime.now().strftime("%Y%m%d")
@@ -473,24 +577,23 @@ class Rorze(Component):
                 break
 
         try: 
-            if ("STG") in self.name:
+            if self.identifier == "RV201-F07-000":
                 logger.info(f"Starting Loadport Backup for {self.name}.")
                 read_data_loadport(self, filename)
-            elif("TRB") in self.name:
+            elif self.identifier == "RR754":
                 logger.info(f"Starting Robot Backup for {self.name}")
                 read_data_robot(self, filename)
-            elif("ALN") in self.name:
+            elif self.identifier == "RA320_003":
                 logger.info(f"Starting Prealigner Backup for {self.name}")
-                read_data_prealigner(self, filename) # TODO add other prealigners than RA320
+                read_data_prealigner(self, filename) # TODO add other prealigners than RA320_003
+            elif self.identifier == "RTS13":
+                logger.info(f"Starting Linear Track Backup for {self.name}")
+                read_data_lineartrack(self, filename) # TODO add other prealigners than RA320_003
             else:
-                error = f"Backup not implemented for component {self.name}"
+                error = f"Backup not implemented for component {self.identifier}"
                 logger.error(error)
                 raise Exception(error)
             self.status = f"Backup saved to '{filename}'"
         except Exception as e:
             logger.error(f"Reading failed: {e}")
             self.status = {f"Reading failed: {e}"}
-        
-
-class Sinfonia(Component):
-    pass

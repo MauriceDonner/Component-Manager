@@ -85,7 +85,9 @@ class AutosetupMenu:
                 current_row = (current_row + 1) % len(self.button_list)
             elif key == ord('\n'):
                 selected = self.button_list[current_row]
-                if selected == '- Change system':
+                if selected == '- Start Autosetup':
+                    self.autosetup(stdscr)
+                elif selected == '- Change system':
                     self.choose_system(stdscr)
                 elif selected == '- Back':
                     break
@@ -215,27 +217,27 @@ class AutosetupMenu:
         # all_components = component_dict
         # TODO For testing
         all_components = {
-            '172.20.9.150': {'IP': '172.20.9.150', 'System': None, 'Type': 'Prealigner', 'Name': 'ALN0', 'SN': 'ACE5CFG', 'CType': 'RA320_003', 'Firmware': '1.03B'},
-            '192.168.30.20': {'IP': '192.168.30.20', 'System': 'WMC', 'Type': 'Robot', 'Name': 'TRB0', 'SN': 'RC5J082', 'CType': 'RR754', 'Firmware': '1.19U'},
-            '192.168.30.110': {'IP': '192.168.30.110', 'System': 'WMC', 'Type': 'Loadport_1', 'Name': 'STG1', 'SN': 'STG1504', 'CType': 'RV201-F07-000', 'Firmware': '1.13R'},
-            '172.20.9.100': {'IP': '172.20.9.100', 'System': None, 'Type': 'Loadport (Unconfigured)', 'Name': 'STG0', 'SN': 'STG1503', 'CType': 'RV201-F07-000', 'Firmware': '1.13R'},
+            '172.20.9.150': {'IP': '172.20.9.150', 'System': None, 'Type': 'Prealigner', 'Name': 'ALN0', 'SN': 'ACE5CFG', 'Identifier': 'RA320_003', 'Firmware': '1.03B'},
+            '192.168.30.20': {'IP': '192.168.30.20', 'System': 'WMC', 'Type': 'Robot', 'Name': 'TRB0', 'SN': 'RC5J082', 'Identifier': 'RR754', 'Firmware': '1.19U'},
+            '192.168.30.110': {'IP': '192.168.30.110', 'System': 'WMC', 'Type': 'Loadport_1', 'Name': 'STG1', 'SN': 'STG1504', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
+            '172.20.9.100': {'IP': '172.20.9.100', 'System': None, 'Type': 'Loadport (Unconfigured)', 'Name': 'STG0', 'SN': 'STG1503', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
             }
 
         self.all_components = {}
         for i, ip in enumerate(all_components.keys()):
             # Check, whether a component is in the list of known components
-            if all_components[ip]['CType'] in CONFIG_MENU_OPTIONS:
+            if all_components[ip]['Identifier'] in CONFIG_MENU_OPTIONS:
                 # Assign an index for each recognized component
                 self.all_components[i] = all_components[ip]
                 # Set up a configuration list for each component
-                type = self.all_components[i]['CType']
+                type = self.all_components[i]['Identifier']
                 config_list = CONFIG_MENU_OPTIONS['Common'] + CONFIG_MENU_OPTIONS[type]
                 self.all_components[i]['Config_List'] = {}
                 for config_item in config_list:
                     # Use deepcopy in order not to change the original dict in config.py
                     self.all_components[i]['Config_List'][config_item['key']] = copy.deepcopy(config_item)
             else: 
-                logger.warning(f"Component {all_components[ip]['CType']} not implemented in autosetup")
+                logger.warning(f"Component {all_components[ip]['Identifier']} not implemented in autosetup")
         
         # Check, how to setup loadports
         self.check_loadport_configuration() 
@@ -254,3 +256,13 @@ class AutosetupMenu:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = True
             else:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = False
+    
+    # def autosetup(self):
+    #     for i, component in self.all_components.items():
+            # Connect to component
+
+            # Save original component backup
+
+            # If config enabled -> Configure component
+
+            # Save altered component backup

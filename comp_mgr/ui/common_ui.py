@@ -191,3 +191,39 @@ class PopupMenu:
                 break
 
         del win  # Cleanup window
+
+class PopupInput:
+    def __init__(self, stdscr, title, text):
+        self.stdscr = stdscr
+        self.title = title
+        self.text = text
+        self.input = None
+    
+    def draw(self):
+        height, width = self.stdscr.getmaxyx()
+        win_height = 4
+        win_width = width // 2
+        text_length = len(self.text)
+        start_y = (height - win_height ) // 2
+        start_x = (width - win_width) // 2
+
+        win = curses.newwin(win_height, win_width, start_y, start_x)
+        win.keypad(True)
+
+        win.clear()
+        win.box()
+
+        win.attron(curses.A_BOLD)
+        win.addstr(0,2,f" {self.title} ")
+        win.attroff(curses.A_BOLD)
+
+        win.addstr(win_height - 2,2,f"{self.text} ")
+
+        curses.echo()
+        new_val = win.getstr(win_height - 2, text_length + 2, 20).decode("utf-8")
+        curses.noecho()
+        if new_val == '':
+            return
+        else:
+            logger.debug(f"value received: {new_val}")
+            return new_val

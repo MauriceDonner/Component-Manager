@@ -12,73 +12,92 @@ A compiled version of the software can be found in `releases`. Simply run `Compo
 
 The program tries to ping all known component IPs, and creates an instance of the `Component` class for each response, containing information about IP, current configuration and component type.
 
-### 2. Menu
+### 2. Main Menu
 
 The main menu lists all components in the local network. From here, either all components can be configured according to a WMC or SemDex network standard.
 
 Alternatively, single components can be selected and configured individually.
 
-### 3. Component list and configuration settings
+### 3. Component Menu
+
+Press the Enter Key with a component selected to connect to that component. Once connected, you can read all kinds of status information, or change settings for that component. Each component has different settings. Settings can be added by request.
+
+### 4. Autosetup Menu
+
+All connected components are listed. The Menu shows a summary of which settings are going to be changed. Pressing the Enter Key on a component lets you change its configuration. Nothing is communicated to the component until the "Start Autosetup" option is chosen. This option will then communicate the configuration to all components. **It also creates backups before and after changes are made**, which makes this software safe to operate, even if a bug is not discovered in time.
+
+## 3. List of Settings
 
 The type of components and their configurations can be found in the list below:
 
 - Loadport
-    - [ ] Find serial Number
-    - [ ] Find Loadport type
-    - [ ] Read firmware version 
-    - [ ] Backup original settings
-    - [x] Read rotary switch value
-    - [ ] Set settings for specific Body No.
-        - Body No
-        - Auto Output
+    - [x] Find serial Number
+    - [x] Read firmware version 
+    - [x] Backup original settings
+    - [x] Change IP address
+    - [x] Set body no.
+    - [ ] Set basic settings (which are always the same within a system):
+        - Auto output
         - TCP/IP
-        - Host IP Adr.
-        - Log Host
-        - Own IP
+        - Host IP adr.
+        - Log host
         - Presence led
         - i/o
-    - [ ] Backup new settings
+    - [x] Backup new settings
     - [ ] All axis origin search
-    - [ ] (Ask user for Load/Endurance test)
+    - [ ] (Ask user for load/endurance test?)
 - Prealigner
-    - [ ] Find serial number
-    - [ ] Find Prealigner type
-    - [ ] Read firmware version
-    - [ ] Backup original settings
-    - [ ] Set settings
-        - Host IP Address
-        - Host Port
-        - Log Host
-        - Host Interface
-        - Body No
-    - [ ] Backup new settings
+    - [x] Find serial number
+    - [x] Find prealigner type
+    - [x] Read firmware version
+    - [x] Backup original settings
+    - [x] Change IP address
+    - [x] Set spindle tolerance to 0 (only RA320_003)
+    - [x] Set slow prealigner spindle speed (for the external notch camera)
+    - [ ] Set basic settings (which are always the same within a system):
+        - Host IP address
+        - Host port
+        - Log host
+        - Host interface
+        - Body no
+    - [x] Backup new settings
     - [ ] All axis origin search
-    - [ ] Ask user for Endurance test
+    - [ ] Ask user for endurance test?
 - Lineartrack  
-    - [ ] Find serial number
-    - [ ] Backup original settings
-    - [ ] Set settings
+    - [x] Find serial number
+    - [x] Backup original settings
+    - [x] Change IP address
+    - [ ] Set basic settings (which are always the same within a system):
         - Host IP Address
         - Host Port
         - Log Host
-    - [ ] Backup new settings
+    - [x] Backup new settings
 - Robot
-    - [ ] Find serial number
-    - [ ] Find robot type
-    - [ ] Read firmware version
-    - [ ] Backup original settings
-    - [ ] Set settings
+    - [x] Find serial number
+    - [x] Find robot type
+    - [x] Read firmware version
+    - [x] Backup original settings
+    - [x] Change IP address
+    - [ ] Set basic settings (which are always the same within a system)
         - Host IP Address
         - Host Port
         - Log Host
-        - Own IP Address
         - No Interpolation
-    - [ ] Backup new settings
+    - [x] Backup new settings
     - [ ] All axis origin search
-- Teaching Pendant
-    - Only check for connection, settings are changed within Pendant
-- Log Host
-    - Only check for connection. No settings are changed.
+
+## List of integrated components
+
+- Rorze Robot **RR754**
+- Rorze Linear Track **RTS13**
+- Rorze Prealigners
+    - **RA320**
+    - **RA320_003**
+    - **RA420_001**
+- Rorze Loadport
+    - **RV201-F07-000**
+
+For safety reasons, any other component will not be able to be configured unless it is manually added.
 
 ## Compiling and testing the software
 

@@ -119,13 +119,13 @@ class CompIF:
     def get_component_info(self, ip: str, port:int=12100) -> dict:
         """
         Creates the comp_info dictionary. This is unified for all components, regardless of manufacturer:
-        {'IP':       192.168.0.1,
-         'System':   SEMDEX,
-         'Type':     Robot,
-         'Name':     TRB1,
-         'SN'        XXXXX
-         'CType':    RR757
-         'Firmware': 1.19U
+        {'IP':         192.168.0.1,
+         'System':     SEMDEX,
+         'Type':       Robot,
+         'Name':       TRB1,
+         'SN'          XXXXX
+         'Identifier': RR757
+         'Firmware':   1.19U
         }
         """
         # Check, whether the ip corresponds to an actual component
@@ -134,7 +134,7 @@ class CompIF:
         if comp_info["Type"] == "Unknown IP":
             comp_info["Name"] = None
             comp_info["SN"] = None
-            comp_info["CType"] = None
+            comp_info["Identifier"] = None
             comp_info["Firmware"] = None
             logger.debug(f"Received component info: {comp_info}")
             return comp_info
@@ -142,7 +142,7 @@ class CompIF:
         if comp_info["Type"] == "Simulation":
             comp_info["Name"] = 'SIM1'
             comp_info["SN"] = 'SIM1234'
-            comp_info["CType"] = 'SIM_COMPONENT'
+            comp_info["Identifier"] = 'SIM_COMPONENT'
             comp_info["Firmware"] = '1.19U'
             return comp_info
 
@@ -172,10 +172,10 @@ class CompIF:
                     serial_number = self.send_and_read_rorze(sock,sn_command)
                     # Get Rorze Component Type and Firmware version
                     verstring = self.send_and_read_rorze(sock, f"o{name}.GVER").split(" ")
-                    ctype, firmware, = verstring[-4], verstring[-2]
+                    identifier, firmware, = verstring[-4], verstring[-2]
                     comp_info["Name"] = name
                     comp_info["SN"] = serial_number.split('"')[1]
-                    comp_info["CType"] = ctype
+                    comp_info["Identifier"] = identifier
                     comp_info["Firmware"] = firmware
                     logger.info(f"Received component info: {comp_info}")
                     return comp_info
@@ -183,7 +183,7 @@ class CompIF:
                 else: # TODO Add more components here
                     comp_info["Name"] = None
                     comp_info["SN"] = None
-                    comp_info["CType"] = None
+                    comp_info["Identifier"] = None
                     comp_info["Firmware"] = None
                     logger.info(f"Received component info: {comp_info}")
                     return comp_info
@@ -198,7 +198,7 @@ class CompIF:
         # If no connection can be established, return empty info
         comp_info["Name"] = None
         comp_info["SN"] = None
-        comp_info["CType"] = None
+        comp_info["Identifier"] = None
         comp_info["Firmware"] = None
         logger.info(f"Received component info: {comp_info}")
         return comp_info
