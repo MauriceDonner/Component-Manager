@@ -153,4 +153,9 @@ def main():
     Components = CompIF()
     ip_list = Components.discover()
     menu = Menu(ip_list)
-    curses.wrapper(menu.run_main_menu)
+    try:
+        curses.wrapper(menu.run_main_menu)
+    except curses.error:
+        logger.error("Text is out of boundary.")
+        print("\033[91m ERROR: Text is out of boundary. Please use a larger window until this is fixed. \033[0m")
+        sys.exit(0)
