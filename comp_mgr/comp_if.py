@@ -15,13 +15,11 @@ from comp_mgr.comp import Component
 logger = logging.getLogger(__name__)
 
 class CompIF:
+    TIMEOUT = 1
 
     def __init__(self):
         self.status = "OK"
         self.system = "UNCONF"
-
-        # TODO testing
-        self.connection_threads = []
 
     # Ping function for windows (doesnt work on linux)
     def ping(self,ip):
@@ -151,7 +149,7 @@ class CompIF:
         # If its a component, find out which type
         logger.info(f"Connecting to {ip}...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(3)
+        sock.settimeout(self.TIMEOUT)
         retries = 0
 
         for i in range(retries+1):

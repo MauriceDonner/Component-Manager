@@ -61,7 +61,7 @@ class Menu:
 
             # Information Cascade - Reduce infomation if not available
             if firmware:
-                info = f"{system} {type} {name} {sn} v{firmware}"
+                info = f"{system} {type} {name} {sn} v{firmware} \u221A"
             elif name:
                 info = f"{system} {type} {name} {sn}"
             elif system:
@@ -140,7 +140,12 @@ class Menu:
                 else:
                     comp_if = CompIF()
                     comp_info = comp_if.get_component_info(selected)
-                    ComponentMenu(comp_info).run(stdscr)
+                    # Check, if the component can be connected to
+                    if comp_info["Identifier"]:
+                        ComponentMenu(comp_info).run(stdscr)
+                    else:
+                        self.set_status("You can only connect to automation components")
+                        stdscr.refresh()
                     current_row = 0 # After returning, select current row
 
 def main():
