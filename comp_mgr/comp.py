@@ -292,6 +292,35 @@ class Rorze(Component):
         message = self.send_and_read(command)
         self.status = f"IP set to {ip}. Please restart the component. ({message})"
 
+    def get_host_IP(self):
+        command = f"{self.read_name()}.DEQU.GTDT[1]"
+        ip = self.send_and_read(command)
+        return ip
+    
+    def get_host_port(self):
+        if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
+            command = f"{self.read_name()}.DEQU.GTDT[68]"
+            port = self.send_and_read(command)
+            return port
+        elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
+            command = f"{self.read_name()}.DEQU.GTDT[2]"
+            port = self.send_and_read(command)
+            return port
+        else:
+            return None
+        
+    def get_log_host(self):
+        if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
+            command = f"{self.read_name()}.DEQU.GTDT[69]"
+            ip = self.send_and_read(command)
+            return ip
+        elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
+            command = f"{self.read_name()}.DEQU.GTDT[4]"
+            ip = self.send_and_read(command)
+            return ip
+        else:
+            return None
+
     def set_host_IP(self,ip):
         command = f"{self.read_name()}.DEQU.STDT[1]={ip}"
         self.send_and_read(command)

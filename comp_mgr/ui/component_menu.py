@@ -111,7 +111,8 @@ class ComponentMenu:
     
     def change_host_popup(self,stdscr):
         def _action(component):
-            ip = PopupInput(stdscr, "Set Host IP Address", "Enter IP address: ").draw()
+            current = component.get_host_IP()
+            ip = PopupInput(stdscr, f"Set Host IP Address ({current})", "Enter IP address: ").draw()
             try:
                 iptest = ipaddress.IPv4Address(ip)
                 component.set_host_IP(ip)
@@ -122,7 +123,8 @@ class ComponentMenu:
 
     def change_port_popup(self, stdscr):
         def _action(component):
-            port = PopupInput(stdscr, "Set TCP/IP Port:", "Enter Port number: ").draw()
+            current = component.get_host_port()
+            port = PopupInput(stdscr, f"Set TCP/IP Port ({current})", "Enter Port number: ").draw()
             try:
                 port_int = int(port)
             except:
@@ -138,7 +140,8 @@ class ComponentMenu:
 
     def change_log_host_popup(self, stdscr):
         def _action(component):
-            ip = PopupInput(stdscr, "Set IP address of the log host:", "Enter IP address: ").draw()
+            current = component.get_log_host()
+            ip = PopupInput(stdscr, f"Set IP address of the log host ({current})", "Enter IP address: ").draw()
             try:
                 iptest = ipaddress.IPv4Address(ip)
                 component.set_log_host(ip)
