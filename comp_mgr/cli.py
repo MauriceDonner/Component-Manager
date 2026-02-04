@@ -25,7 +25,6 @@ class Menu:
 
     def __init__(self, ip_list: list):
         self.ip_list = ip_list.copy()
-        # Simulate a robot when simulation is selected
         self.buttons = {ip: "[...loading]" for ip in self.ip_list}
         self.status_message = None
         self.status_until = 0

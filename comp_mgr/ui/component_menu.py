@@ -128,13 +128,13 @@ class ComponentMenu:
             try:
                 port_int = int(port)
             except:
-                logger.error(f"The entered value is not a valid number (0-65535)")
+                logger.error(f"Value error in port: Value is not a valid number (0-65535)")
                 self.set_status(f"The entered value is not a valid number (0-65535)")
                 return
             if 0 <= port_int < 65536:
                 component.set_host_port(port)
             else:
-                logger.error(f"The entered port number exceeds the limit (0-65535)")
+                logger.error(f"Value error in port: Value exceeds the port limit (0-65535)")
                 self.set_status(f"Port parsing error. Port exceeds limit (0-65535)")
         return _action
 
@@ -162,8 +162,6 @@ class ComponentMenu:
         return _action
     
     def run(self, stdscr):
-        logger.debug(self.comp_info)
-
         name = self.comp_info["Name"]
         if any(p in name for p in ["TRB", "ALN", "STG", "TBL", "SIM"]):
             self.component = Rorze(self.comp_info)

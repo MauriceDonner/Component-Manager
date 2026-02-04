@@ -32,12 +32,6 @@ NETWORK = {
         "CID_Reader_2":  "192.168.30.112",
         "CID_Reader_3":  "192.168.30.113",
     },
-    "UNCONF": {
-        "Robot":         "172.20.9.150",
-        "Lineartrack":   "172.20.9.140",
-        "Loadport":      "172.20.9.100",
-        "Prealigner":    "172.20.9.160",
-    }
 }
 
 OTHER_IPS = {
@@ -127,9 +121,14 @@ COMPONENT_MENU_OPTIONS = {
         {'label': 'Create backup (Read Data)', 'type': 'command', 'action': 'read_data'}
     ],
     'SIM_COMPONENT': [
+        {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'}
+    ],
+    'RR754': [
         {'label': 'Read External Sensors (GAIO)', 'type': 'command', 'action': 'GAIO'},
         {'label': 'Set Automatic Status Reports ON (SAIO)', 'type': 'command', 'action': 'SAIO_on'},
         {'label': 'Set Automatic Status Reports OFF (SAIO)', 'type': 'command', 'action': 'SAIO_off'},
+    ],
+    'RV201-F07-000': [
         {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'}
     ]
 }

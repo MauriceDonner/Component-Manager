@@ -78,7 +78,7 @@ class Component:
             # finally:
             #     self.busy = False
     
-    def recv_until_newline(self, timeout=0.1):
+    def recv_until_newline(self, timeout=TIMEOUT):
         self.sock.settimeout(timeout)
         data = b""
         while True:
@@ -103,12 +103,11 @@ class Component:
             try: 
                 read = self.recv_until_newline()
                 logger.debug(f"Receive: {read}")
-                # TODO Cut the Component name. Maybe include it again for non-rorze.
-                message = read #.split('.')[1]
-                # Simulation always treats it like motion command
-                self.sock.settimeout(self.MOTION_TIMEOUT)
-                self.status = "Waiting for motion..."
+                message = read
                 try:
+                    # Simulation always treats it like motion command
+                    self.sock.settimeout(self.MOTION_TIMEOUT)
+                    self.status = "Waiting for motion..."
                     if "SIMULATION" in self.type:
                         read = self.sock.recv(1024)
                         logger.debug(f"Receive: {read}")
@@ -290,6 +289,8 @@ class Rorze(Component):
             return
 
         message = self.send_and_read(command)
+        write = self.send_and_read(f"{self.read_name()}.WTDT")
+        #TODO read acknowledge 
         self.status = f"IP set to {ip}. Please restart the component. ({message})"
 
     def get_host_IP(self):
@@ -324,15 +325,21 @@ class Rorze(Component):
     def set_host_IP(self,ip):
         command = f"{self.read_name()}.DEQU.STDT[1]={ip}"
         self.send_and_read(command)
+        write = self.send_and_read(f"{self.read_name()}.WTDT")
+        #TODO read acknowledge 
         self.status = f"Host IP set to {ip}."
     
     def set_host_port(self,port):
         if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
             command = f"{self.read_name()}.DEQU.STDT[68]={port}"
             self.send_and_read(command)
+            write = self.send_and_read(f"{self.read_name()}.WTDT")
+            #TODO read acknowledge 
         elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
             command = f"{self.read_name()}.DEQU.STDT[2]={port}"
             self.send_and_read(command)
+            write = self.send_and_read(f"{self.read_name()}.WTDT")
+            #TODO read acknowledge 
         else:
             status = f"Component type {self.identifier} has not been implemented"
             self.status = status
@@ -345,9 +352,13 @@ class Rorze(Component):
         if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
             command = f"{self.read_name()}.DEQU.STDT[69]={ip}"
             self.send_and_read(command)
+            write = self.send_and_read(f"{self.read_name()}.WTDT")
+            #TODO read acknowledge 
         elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
             command = f"{self.read_name()}.DEQU.STDT[4]={ip}"
             self.send_and_read(command)
+            write = self.send_and_read(f"{self.read_name()}.WTDT")
+            #TODO read acknowledge 
         else:
             status = f"Component type {self.identifier} has not been implemented"
             self.status = status
@@ -364,11 +375,15 @@ class Rorze(Component):
     def SAIO_on(self):
         command = f"{self.read_name()}.SAIO(00000000000000000000000100000010,00000000000000000000000000000000,0000000000)"
         message = self.send_and_read(command)
+        write = self.send_and_read(f"{self.read_name()}.WTDT")
+        #TODO read acknowledge 
         self.status = f"Automatic status ON. Response logged."
 
     def SAIO_off(self):
         command = f"{self.read_name()}.SAIO(00000000000000000000000000000000,00000000000000000000000000000000,0000000000)"
         message = self.send_and_read(command)
+        write = self.send_and_read(f"{self.read_name()}.WTDT")
+        #TODO read acknowledge 
         self.status = f"Automatic status OFF. Response logged."
 
     def read_data(self):

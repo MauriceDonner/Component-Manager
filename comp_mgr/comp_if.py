@@ -157,14 +157,12 @@ class CompIF:
             try:
                 sock.connect((ip, port))
                 read = str(sock.recv(1024))
-                logger.debug(f"Recieved: {read} from {ip}")
                 message = read[2:-3] # Cuts the b' and \\r
 
                 # If Rorze component, return name and serial number
                 if any(p in read for p in ['TRB','ALN','STG','TBL']):
-                    logger.debug("Component type detected: Rorze")
                     name = message.split('.')[0][1:]
-                    logger.debug(f"Short name: {name}")
+                    logger.info(f"Component type detected: Rorze {name}")
                     # Get Rorze Serial Number
                     sn_command = f"o{name}.DEQU.GTDT[0]"
                     serial_number = self.send_and_read_rorze(sock,sn_command)
