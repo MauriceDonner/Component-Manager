@@ -385,6 +385,24 @@ class Rorze(Component):
         write = self.send_and_read(f"{self.read_name()}.WTDT")
         #TODO read acknowledge 
         self.status = f"Automatic status OFF. Response logged."
+    
+    def set_laser(self, arm, setting):
+        if arm == 'lower':
+            arm_no = 2
+            if setting == 'on':
+                set_bit = 'D080B'
+            elif setting == 'off':
+                set_bit = 'D081B'
+        elif arm == 'upper':
+            arm_no = 1
+            if setting == 'on':
+                set_bit = 'D100B'
+            elif setting == 'off':
+                set_bit = 'D101B'
+        command = f"{self.read_name()}.ARM{arm_no}.DCMD({set_bit},1)"
+        message = self.send_and_read(command)
+        self.GAIO()
+        self.status = f"{arm} arm laser turned {setting}"
 
     def read_data(self):
         """

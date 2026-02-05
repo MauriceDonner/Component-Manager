@@ -121,12 +121,16 @@ COMPONENT_MENU_OPTIONS = {
         {'label': 'Create backup (Read Data)', 'type': 'command', 'action': 'read_data'}
     ],
     'SIM_COMPONENT': [
-        {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'}
+        {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'},
+        {'label': 'Set upper arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'upper_laser_popup'},
+        {'label': 'Set lower arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'lower_laser_popup'},
     ],
     'RR754': [
         {'label': 'Read External Sensors (GAIO)', 'type': 'command', 'action': 'GAIO'},
         {'label': 'Set Automatic Status Reports ON (SAIO)', 'type': 'command', 'action': 'SAIO_on'},
         {'label': 'Set Automatic Status Reports OFF (SAIO)', 'type': 'command', 'action': 'SAIO_off'},
+        {'label': 'Set upper arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'upper_laser_popup'},
+        {'label': 'Set lower arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'lower_laser_popup'},
     ],
     'RV201-F07-000': [
         {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'}

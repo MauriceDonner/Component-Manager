@@ -1,7 +1,7 @@
 import curses, sys, threading, time
 import ipaddress
 import logging
-from comp_mgr.ui.common_ui import draw_status_popup, PopupInput
+from comp_mgr.ui.common_ui import draw_status_popup, PopupInput, PopupMenu
 from comp_mgr.comp import Rorze
 from comp_mgr.config import COMPONENT_MENU_OPTIONS
 
@@ -136,6 +136,30 @@ class ComponentMenu:
             else:
                 logger.error(f"Value error in port: Value exceeds the port limit (0-65535)")
                 self.set_status(f"Port parsing error. Port exceeds limit (0-65535)")
+        return _action
+
+    def upper_laser_popup(self, stdscr):
+        def _action(component):
+            options = {
+                'on': {"label": "on", "type": "selection", "key": "on"},
+                'off': {"label": "off", "type": "selection", "key": "off"}
+            }
+            popup = PopupMenu(stdscr, f"Set upper laser", options)
+            setting = popup.run()
+            if setting: 
+                component.set_laser('upper', setting)
+        return _action
+
+    def lower_laser_popup(self, stdscr):
+        def _action(component):
+            options = {
+                'on': {"label": "on", "type": "selection", "key": "on"},
+                'off': {"label": "off", "type": "selection", "key": "off"}
+            }
+            popup = PopupMenu(stdscr, f"Set lower laser", options)
+            setting = popup.run()
+            if setting: 
+                component.set_laser('lower', setting)
         return _action
 
     def change_log_host_popup(self, stdscr):
