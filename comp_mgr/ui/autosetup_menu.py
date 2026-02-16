@@ -1,9 +1,10 @@
 import copy
 import curses
+import ipaddress
 import logging
 import sys
 import time
-from comp_mgr.comp_if import CompIF
+from comp_mgr.comp import Rorze
 from comp_mgr.config import NETWORK, CONFIG_MENU_OPTIONS
 from comp_mgr.exceptions import MultipleUnconfiguredLoadports, DoubleConfiguration
 from comp_mgr.ui.common_ui import PopupMenu, draw_status_popup
@@ -257,12 +258,40 @@ class AutosetupMenu:
             else:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = False
     
-    # def autosetup(self):
-    #     for i, component in self.all_components.items():
+    def autosetup(self):
+        """
+        Define here, which actions are taken when a Config_List entry is read.
+        """
+        for i, entry in self.all_components.items():
+            
             # Connect to component
+            component = Rorze(entry)
 
             # Save original component backup
+            component.read_data()
 
             # If config enabled -> Configure component
+            if not entry['Configure']: continue
+
+            for config_item, config in entry['Config_List'].items():
+                if config['enabled']:
+                    if config_item == "Target_IP":
+                        ip = config["value"]
+                        iptest = ipaddress.IPv4Address(ip)
+                        component.change_IP(ip)
+                    elif config_item == "Basic_Settings":
+                        component.basic_settings() #TODO
+                    elif config_item == "Spindle_Fix":
+                        component.spindle_fix() #TODO
+                    elif config_item == "Slow_Mode":
+                        component.slow_mode(True) #TODO
+                    elif config_item == "No_Interpolation":
+                        component.no_interpolation()
+                    elif config_item == "Init_Rotate":
+                        component.init_rotate() #TODO
+                    elif config_item == "Set_Body_Number":
+                        body_no = config["value"]
+                        component.set_body_number(body_no) #TODO
 
             # Save altered component backup
+            component.read_data()

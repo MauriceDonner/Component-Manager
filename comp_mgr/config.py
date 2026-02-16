@@ -35,7 +35,7 @@ NETWORK = {
 }
 
 OTHER_IPS = {
-    "127.0.0.1":     "Simulation",
+    # "127.0.0.1":     "Simulation",
     "172.20.9.100":  "Loadport (Unconfigured)",
     "172.20.9.101":  "Loadport (Unconfigured)",
     "172.20.9.140":  "Lineartrack (Unconfigured)",
@@ -97,7 +97,7 @@ CONFIG_MENU_OPTIONS = {
     ],
     'RA320_003': [
         { 'label': 'Spindle tolerance fix', 'type': 'checkbox', 'key': 'Spindle_Fix', 'enabled': True},
-        { 'label': 'Slow mode (Ext. notch)', 'type': 'checkbox', 'key': 'Speed_Fix', 'enabled': False},
+        { 'label': 'Slow mode (Ext. notch)', 'type': 'checkbox', 'key': 'Slow_Mode', 'enabled': False},
     ],
     'RR754': [
         { 'label': 'No interpolation', 'type': 'checkbox', 'key': 'No_Interpolation', 'enabled': True},
@@ -118,13 +118,13 @@ COMPONENT_MENU_OPTIONS = {
         {'label': 'Set Host IP', 'type': 'value', 'action': 'set_host_IP', 'action_factory': 'change_host_popup'},
         {'label': 'Set TCP/IP Port', 'type': 'value', 'action': 'set_host_port', 'action_factory': 'change_port_popup'},
         {'label': 'Set Log Host IP', 'type': 'value', 'action': 'set_log_host', 'action_factory': 'change_log_host_popup'},
-        {'label': 'Create backup (Read Data)', 'type': 'command', 'action': 'read_data'}
+        #{'label': 'Create backup (Read Data)', 'type': 'command', 'action': 'read_data'}
     ],
-    'SIM_COMPONENT': [
-        {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'},
-        {'label': 'Set upper arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'upper_laser_popup'},
-        {'label': 'Set lower arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'lower_laser_popup'},
-    ],
+    # 'SIM_COMPONENT': [
+    #     {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'},
+    #     {'label': 'Set upper arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'upper_laser_popup'},
+    #     {'label': 'Set lower arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'lower_laser_popup'},
+    # ],
     'RR754': [
         {'label': 'Read External Sensors (GAIO)', 'type': 'command', 'action': 'GAIO'},
         {'label': 'Set Automatic Status Reports ON (SAIO)', 'type': 'command', 'action': 'SAIO_on'},

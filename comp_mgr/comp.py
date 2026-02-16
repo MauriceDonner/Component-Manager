@@ -10,11 +10,12 @@ When new components are added, they must be implemented individually here for:
 - reading a backup (read_data)
 """
 import logging
-import json
 import os
 import socket
+import sys
 import threading
 import time
+from comp_mgr.exceptions import NoSystem
 from datetime import datetime
 from typing import TextIO, Union
 from comp_mgr.config import NETWORK
@@ -289,7 +290,9 @@ class Rorze(Component):
             return
 
         message = self.send_and_read(command)
+        self.sock.settimeout(self.MOTION_TIMEOUT)
         write = self.send_and_read(f"{self.read_name()}.WTDT")
+        self.sock.settimeout(self.TIMEOUT)
         #TODO read acknowledge 
         self.status = f"IP set to {ip}. Please restart the component. ({message})"
 
@@ -325,7 +328,9 @@ class Rorze(Component):
     def set_host_IP(self,ip):
         command = f"{self.read_name()}.DEQU.STDT[1]={ip}"
         self.send_and_read(command)
+        self.sock.settimeout(self.MOTION_TIMEOUT)
         write = self.send_and_read(f"{self.read_name()}.WTDT")
+        self.sock.settimeout(self.TIMEOUT)
         #TODO read acknowledge 
         self.status = f"Host IP set to {ip}."
     
@@ -333,12 +338,16 @@ class Rorze(Component):
         if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
             command = f"{self.read_name()}.DEQU.STDT[68]={port}"
             self.send_and_read(command)
+            self.sock.settimeout(self.MOTION_TIMEOUT)
             write = self.send_and_read(f"{self.read_name()}.WTDT")
+            self.sock.settimeout(self.TIMEOUT)
             #TODO read acknowledge 
         elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
             command = f"{self.read_name()}.DEQU.STDT[2]={port}"
             self.send_and_read(command)
+            self.sock.settimeout(self.MOTION_TIMEOUT)
             write = self.send_and_read(f"{self.read_name()}.WTDT")
+            self.sock.settimeout(self.TIMEOUT)
             #TODO read acknowledge 
         else:
             status = f"Component type {self.identifier} has not been implemented"
@@ -347,17 +356,23 @@ class Rorze(Component):
             return
 
         self.status = f"TCP/IP port set to {port}."
+    
+    #TODO IMPLEMENT ALL OTHER AUTOSETUP METHODS HERE
         
     def set_log_host(self,ip):
         if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
             command = f"{self.read_name()}.DEQU.STDT[69]={ip}"
             self.send_and_read(command)
+            self.sock.settimeout(self.MOTION_TIMEOUT)
             write = self.send_and_read(f"{self.read_name()}.WTDT")
+            self.sock.settimeout(self.TIMEOUT)
             #TODO read acknowledge 
         elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
             command = f"{self.read_name()}.DEQU.STDT[4]={ip}"
             self.send_and_read(command)
+            self.sock.settimeout(self.MOTION_TIMEOUT)
             write = self.send_and_read(f"{self.read_name()}.WTDT")
+            self.sock.settimeout(self.TIMEOUT)
             #TODO read acknowledge 
         else:
             status = f"Component type {self.identifier} has not been implemented"
@@ -375,14 +390,12 @@ class Rorze(Component):
     def SAIO_on(self):
         command = f"{self.read_name()}.SAIO(00000000000000000000000100000010,00000000000000000000000000000000,0000000000)"
         message = self.send_and_read(command)
-        write = self.send_and_read(f"{self.read_name()}.WTDT")
         #TODO read acknowledge 
         self.status = f"Automatic status ON. Response logged."
 
     def SAIO_off(self):
         command = f"{self.read_name()}.SAIO(00000000000000000000000000000000,00000000000000000000000000000000,0000000000)"
         message = self.send_and_read(command)
-        write = self.send_and_read(f"{self.read_name()}.WTDT")
         #TODO read acknowledge 
         self.status = f"Automatic status OFF. Response logged."
     
@@ -403,6 +416,49 @@ class Rorze(Component):
         message = self.send_and_read(command)
         self.GAIO()
         self.status = f"{arm} arm laser turned {setting}"
+    
+    def basic_settings(self):
+        """
+        Basic settings to change for every component
+        - TCP/IP Port
+        - Host IP Address
+        - Log Host
+        + Component-Specific Stuff
+        """
+        # System-Specific settings
+        host_ip = "255.255.255.255"
+        port = 12000
+        if self.system == "WMC":
+            log_host = "192.168.30.1"
+        elif self.system == "SEMDEX":
+            log_host = "192.168.0.10"
+        else:
+            logger.error("No system found in configuration")
+            raise NoSystem
+
+        # Component-specific settings
+        if self.identifier == "RV201-F07-000":
+            logger.info("Changing the following Loadport settings: TCP/IP Port | Host IP | Log Host | Auto Output | Presence LED | I/O")
+            self.auto_output() #TODO
+            self.presence_led() #TODO
+            self.io() #TODO
+        
+        elif self.identifier in ["RA320", "RA420_001", "RA320_003"]:
+            logger.info("Changing the following Prealigner settings: TCP/IP Port | Host IP | Log Host | Host Interface | Body no")
+            self.host_interface() #TODO
+            self.set_body_no(1) #TODO
+
+        elif self.identifier == "RR754":
+            logger.info("Changing the following Robot settings: TCP/IP Port | Host IP | Log Host | No Interpolation")
+            self.no_interpolation() #TODO
+        
+        elif self.identifier == "RTS13":
+            logger.info("Changing the following Lineartrack settings: TCP/IP Port | Host IP | Log Host")
+
+        # Common Settings
+        self.set_host_port(port)
+        self.set_host_IP(host_ip)
+        self.set_log_host(log_host)
 
     def read_data(self):
         """
@@ -645,7 +701,7 @@ class Rorze(Component):
             elif self.identifier == "RR754":
                 logger.info(f"Starting Robot Backup for {self.name}")
                 read_data_robot(self, filename)
-            elif self.identifier == "RA320_003":
+            elif self.identifier in ["RA320", "RA420_001", "RA320_001"]:
                 logger.info(f"Starting Prealigner Backup for {self.name}")
                 read_data_prealigner(self, filename) # TODO add other prealigners than RA320_003
             elif self.identifier == "RTS13":
