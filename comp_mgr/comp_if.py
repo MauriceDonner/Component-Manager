@@ -167,8 +167,10 @@ class CompIF:
                     sn_command = f"o{name}.DEQU.GTDT[0]"
                     serial_number = self.send_and_read_rorze(sock,sn_command)
                     # Get Rorze Component Type and Firmware version
-                    verstring = self.send_and_read_rorze(sock, f"o{name}.GVER").split(" ")
-                    identifier, firmware, = verstring[-4], verstring[-2]
+                    # Example str: aTRB0.GVER:RORZE STD_TRB RR754 Ver 1.19U (2020/12/17)
+                    verstring = self.send_and_read_rorze(sock, f"o{name}.GVER")
+                    identifier = verstring.split(" Ver ")[0].split(" ")[-1]
+                    firmware = verstring.split(" Ver ")[1][:5]
                     comp_info["Name"] = name
                     comp_info["SN"] = serial_number.split('"')[1]
                     comp_info["Identifier"] = identifier
