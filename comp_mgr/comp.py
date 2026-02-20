@@ -523,7 +523,7 @@ class Rorze(Component):
         def read_data_robot(self,filename):
             name = self.name
             buffer = 2**20
-            with open(f"{filename}.dat", "w") as backup:
+            with open(f"{filename}", "w") as backup:
                 IP = self.send_and_read(f"o{name}.GTDT[1]", buffer)
                 backup.write(f"STDT[1]={IP}")
                 DEQU = self.send_and_read(f"o{name}.DEQU.GTDT", buffer)
@@ -624,7 +624,7 @@ class Rorze(Component):
             This is for the standard no-vaccuum spindle prealigner.
             Other prealigners will have different backup procedures.
             """
-            with open(f"{filename}.dat", "w") as backup:
+            with open(f"{filename}", "w") as backup:
                 read_block(self,"DRES", 1, "STDT", backup)
                 read_block(self,"DEQU", 1, "STDT", backup)
                 read_block(self,"DRCS", 5, "STDT", backup)
@@ -639,7 +639,7 @@ class Rorze(Component):
                 read_block(self, "DRCP", 10, "STDT", backup)
 
         def read_data_loadport(self,filename):
-            with open(f"{filename}.dat", "w") as backup:
+            with open(f"{filename}", "w") as backup:
 
                 # Read IP and cut Prefix from IP
                 IP = self.send_and_read(f"o{self.name}.GTDT[1]", 1000)
@@ -667,7 +667,7 @@ class Rorze(Component):
                 read_block(self, "DE84", 1, "STDT", backup)
         
         def read_data_lineartrack(self,filename):
-            with open(f"{filename}.dat", "w") as backup:
+            with open(f"{filename}", "w") as backup:
                 read_block(self,"DEQU", 1, "STDT", backup)
                 read_block(self,"DRES", 1, "STDT", backup)
                 read_block(self,"DRCI", 1, "STDT", backup, add_brackets=True)
@@ -682,14 +682,14 @@ class Rorze(Component):
         # Timestamp
         ts = datetime.now().strftime("%Y%m%d")
         index = 0
-        filename = f"{self.sn}_{ts}_{index}"
+        filename = f"{self.sn}_{ts}_{index}.dat"
         logger.debug(f"Reading data to {filename}")
 
         # Make sure to not overwrite a previous backup
         file_exists = 1 if os.path.exists(filename) else 0
         while file_exists:
             index+=1
-            filename = f"{self.sn}_{ts}_{index}"
+            filename = f"{self.sn}_{ts}_{index}.dat"
             logger.warning(f"File exists! Changing filename to {filename}")
             if not os.path.exists(filename):
                 break
