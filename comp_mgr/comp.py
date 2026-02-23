@@ -18,7 +18,7 @@ import time
 from comp_mgr.exceptions import NoSystem
 from datetime import datetime
 from typing import TextIO, Union
-from comp_mgr.config import NETWORK
+from comp_mgr.config import NETWORK, PREALIGNERS, LOADPORTS, ROBOTS, OTHER
 
 logger = logging.getLogger(__name__)
 
@@ -279,9 +279,9 @@ class Rorze(Component):
 
     def change_IP(self, ip):
         # Implement different component types here
-        if self.identifier in ["RR754", "RTS13", "RV201-F07-000", "SIM_COMPONENT"]:
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
             command = f"{self.read_name()}.STDT[1]={ip}"
-        elif self.identifier in ["RA320_003", "RA420_001"]:
+        elif self.identifier in PREALIGNERS:
             command = f"{self.read_name()}.DEQU.STDT[3]={ip}"
         else:
             status = f"Component type {self.identifier} has not been implemented"
@@ -290,9 +290,7 @@ class Rorze(Component):
             return
 
         message = self.send_and_read(command)
-        self.sock.settimeout(self.MOTION_TIMEOUT)
-        self.send_and_read(f"{self.read_name()}.WTDT")
-        self.sock.settimeout(self.TIMEOUT)
+        self.write_changes()
         self.status = f"IP set to {ip}. Please restart the component. ({message})"
 
     def get_host_IP(self):
@@ -301,11 +299,11 @@ class Rorze(Component):
         return ip
     
     def get_host_port(self):
-        if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
             command = f"{self.read_name()}.DEQU.GTDT[68]"
             port = self.send_and_read(command)
             return port
-        elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
+        elif self.identifier in PREALIGNERS:
             command = f"{self.read_name()}.DEQU.GTDT[2]"
             port = self.send_and_read(command)
             return port
@@ -313,11 +311,11 @@ class Rorze(Component):
             return None
         
     def get_log_host(self):
-        if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
             command = f"{self.read_name()}.DEQU.GTDT[69]"
             ip = self.send_and_read(command)
             return ip
-        elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
+        elif self.identifier in PREALIGNERS:
             command = f"{self.read_name()}.DEQU.GTDT[4]"
             ip = self.send_and_read(command)
             return ip
@@ -327,24 +325,18 @@ class Rorze(Component):
     def set_host_IP(self,ip):
         command = f"{self.read_name()}.DEQU.STDT[1]={ip}"
         self.send_and_read(command)
-        self.sock.settimeout(self.MOTION_TIMEOUT)
-        self.send_and_read(f"{self.read_name()}.WTDT")
-        self.sock.settimeout(self.TIMEOUT)
+        self.write_changes()
         self.status = f"Host IP set to {ip}."
     
     def set_host_port(self,port):
-        if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
             command = f"{self.read_name()}.DEQU.STDT[68]={port}"
             self.send_and_read(command)
-            self.sock.settimeout(self.MOTION_TIMEOUT)
-            self.send_and_read(f"{self.read_name()}.WTDT")
-            self.sock.settimeout(self.TIMEOUT)
-        elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
+            self.write_changes()
+        elif self.identifier in PREALIGNERS:
             command = f"{self.read_name()}.DEQU.STDT[2]={port}"
             self.send_and_read(command)
-            self.sock.settimeout(self.MOTION_TIMEOUT)
-            self.send_and_read(f"{self.read_name()}.WTDT")
-            self.sock.settimeout(self.TIMEOUT)
+            self.write_changes()
         else:
             status = f"Component type {self.identifier} has not been implemented"
             self.status = status
@@ -356,18 +348,14 @@ class Rorze(Component):
     # IMPLEMENT ALL OTHER AUTOSETUP METHODS HERE
         
     def set_log_host(self,ip):
-        if self.identifier in ["RV201-F07-000", "RR754", "RTS13", "SIM_COMPONENT"]:
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
             command = f"{self.read_name()}.DEQU.STDT[69]={ip}"
             self.send_and_read(command)
-            self.sock.settimeout(self.MOTION_TIMEOUT)
-            self.send_and_read(f"{self.read_name()}.WTDT")
-            self.sock.settimeout(self.TIMEOUT)
-        elif self.identifier in ["RA320","RA320_003", "RA420_001"]:
+            self.write_changes()
+        elif self.identifier in PREALIGNERS:
             command = f"{self.read_name()}.DEQU.STDT[4]={ip}"
             self.send_and_read(command)
-            self.sock.settimeout(self.MOTION_TIMEOUT)
-            self.send_and_read(f"{self.read_name()}.WTDT")
-            self.sock.settimeout(self.TIMEOUT)
+            self.write_changes()
         else:
             status = f"Component type {self.identifier} has not been implemented"
             self.status = status
@@ -393,6 +381,18 @@ class Rorze(Component):
         logger.debug(message)
         self.status = f"Automatic status OFF. Response logged."
     
+    def set_body_no(self,body_no):
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, PREALIGNERS]):
+            command = f"{self.read_name()}.DEQU.STDT[6]={body_no}"
+            self.send_and_read(command)
+            self.write_changes()
+        else:
+            status = f"Component type {self.identifier} has not been implemented"
+            self.status = status
+            logger.error(status)
+            return
+        self.status = f"Body no set to {body_no}"
+    
     def set_laser(self, arm, setting):
         if arm == 'lower':
             arm_no = 2
@@ -411,16 +411,37 @@ class Rorze(Component):
         self.GAIO()
         self.status = f"{arm} arm laser turned {setting}"
     
-    def set_system_data(self):
+    def set_loadport_settings(self):
         """Sets the bits for system data according to checklists (last updated: 2026-02-20)"""
         if self.identifier == "RV201-F07-000":
             # Sets bits 18 (Presence LED) 4 (Auto Output) and 3 (I/O)
             command = f"{self.read_name()}.DEQU.STDT[8]=299129"
             self.send_and_read(command)
-            self.sock.settimeout(self.MOTION_TIMEOUT)
-            self.send_and_read(f"{self.read_name()}.WTDT")
-            self.sock.settimeout(self.TIMEOUT)
+            self.write_changes()
             self.status = f"Set basic loadport settings"
+    
+    def set_host_interface(self):
+        command = f"{self.read_name()}.DEQU.STDT[5]=001"
+        self.send_and_read(command)
+        self.write_changes()
+    
+    def no_interpolation(self): #TODO Test this
+        case_1 = '"","","","","",00003,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000'
+        case_2 = '"","","","","",00000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000'
+        for idx in range(400):
+            command = f"{self.read_name()}.DCFG="
+            if idx in [0,10,11,12,13]:
+                command+=case_1
+            else:
+                command+=case_2
+            self.send_and_read(command)
+        self.write_changes()
+    
+    def write_changes(self):
+        self.sock.settimeout(self.MOTION_TIMEOUT)
+        acknowledge = self.send_and_read(f"{self.read_name()}.WTDT")
+        logger.debug(f"Writing data to flash memory: {acknowledge}")
+        self.sock.settimout(self.TIMEOUT)
     
     def basic_settings(self):
         """
@@ -442,18 +463,18 @@ class Rorze(Component):
             raise NoSystem
 
         # Component-specific settings
-        if self.identifier == "RV201-F07-000":
+        if self.identifier in LOADPORTS:
             logger.info("Changing the following Loadport settings: TCP/IP Port | Host IP | Log Host | Auto Output | Presence LED | I/O")
-            self.set_system_data() # Set all bits at the same time
+            self.set_loadport_settings()
         
-        elif self.identifier in ["RA320", "RA420_001", "RA320_003"]:
+        elif self.identifier in PREALIGNERS:
             logger.info("Changing the following Prealigner settings: TCP/IP Port | Host IP | Log Host | Host Interface | Body no")
-            self.host_interface() #TODO
-            self.set_body_no(1) #TODO
+            self.set_host_interface()
+            self.set_body_no(1)
 
-        elif self.identifier == "RR754":
+        elif self.identifier in ROBOTS:
             logger.info("Changing the following Robot settings: TCP/IP Port | Host IP | Log Host | No Interpolation")
-            self.no_interpolation() #TODO
+            self.no_interpolation()
         
         elif self.identifier == "RTS13":
             logger.info("Changing the following Lineartrack settings: TCP/IP Port | Host IP | Log Host")
@@ -468,14 +489,25 @@ class Rorze(Component):
         This serves the same purpose as the 'Read Data' button in the
         Rorze maintenance software. It is slightly different for each component.
         """
+        
+        def read_ip_prefix(self, file):
+            IP = self.send_and_read(f"o{self.name}.GTDT[1]", 1000)
+            prefix = f"a{self.name}.GTDT:"
+            if not prefix == IP[:len(prefix)]:
+                e = f"Mismatch between sent command and received command: {IP}"
+                logger.error(e)
+                raise Exception(e)
+            IP = IP[len(prefix):]
+            print(f"STDT[1]={IP}", file=file)
 
         def read_block(self,
                        block_name: str,
                        n: Union[int, list[int]],
                        set_command: str,
                        file: TextIO,
-                       add_brackets: bool=False) -> None:
-            """"Reads one block of component data, like 5 lines of DRCS for the Robot"""
+                       add_brackets: bool=False,
+                       add_leading: bool=False) -> None:
+            """"Reads one block of component data, e.g. 5 lines of DRCS for the Robot"""
             name = self.name
             buffer = 2**20
             get_command = f"G{set_command[1:]}" # Turns STDT into GTDT
@@ -497,7 +529,7 @@ class Rorze(Component):
                     raise Exception(e)
                 block = block[len(prefix):]
 
-                # Add [0], if this is required (Lineartrack does this) #TODO Test this!
+                # Add [0], if this is required (Lineartrack does this) #TODO Test this by reading Lineartrack data
                 if add_brackets:
                     set_string = f"{block_name}.{set_command}[0]={block}"
                 else:
@@ -505,155 +537,119 @@ class Rorze(Component):
                 
                 # Write to file
                 print(set_string, file=file)
-                # file.write(f"{block_name}.{command}={block}\n")
 
             else:
                 for i in block_range:
-                    block = self.send_and_read(f"o{name}.{block_name}.{get_command}[{i}]",buffer)
+                    if add_leading:
+                        idx = f"{i:03}"
+                    else:
+                        idx = i
+                    block = self.send_and_read(f"o{name}.{block_name}.{get_command}[{idx}]",buffer)
 
                     # Cut Prefix from block
                     prefix = f"a{name}.{block_name}.{get_command}:"
                     if not prefix == block[:len(prefix)]:
-                        e = f"Mismatch between sent command and received command: {block}"
+                        e = f"Mismatch between sent command and received command: {block} / {prefix}"
                         logger.error(e)
                         raise Exception(e)
                     block = block[len(prefix):]
 
                     # Write to file
-                    print(f"{block_name}.{set_command}[{i}]={block}", file=file)
-                    # file.write(f"{block_name}.{command}={block}\n")
+                    print(f"{block_name}.{set_command}[{idx}]={block}", file=file)
+                    # file.write(f"{block_name}.{command}={block}\n") # TODO remove if not needed
 
-        def read_data_robot(self,filename):
-            name = self.name
-            buffer = 2**20
+        def read_data_robot(self, filename):
             with open(f"{filename}", "w") as backup:
-                IP = self.send_and_read(f"o{name}.GTDT[1]", buffer)
-                backup.write(f"STDT[1]={IP}")
-                DEQU = self.send_and_read(f"o{name}.DEQU.GTDT", buffer)
-                backup.write(f"DEQU.STDT={DEQU}")
-                DRES = self.send_and_read(f"o{name}.DRES.GTDT", buffer)
-                backup.write(f"DRES.STDT={DRES}")
-                for i in range(5):
-                    DRCI = self.send_and_read(f"o{name}.DRCI.GTDT[{i}]", buffer)
-                    backup.write(f"DRCI.STDT[{i}]={DRCI}")
-                for i in range(5):
-                    DRCS = self.send_and_read(f"o{name}.DRCS.GTDT[{i}]", buffer)
-                    backup.write(f"DRCS.STDT[{i}]={DRCS}")
-                for i in range(5):
-                    DRCH = self.send_and_read(f"o{name}.DRCH.GTDT[{i}]", buffer)
-                    backup.write(f"DRCH.STDT[{i}]={DRCH}")
-                for i in range(5):
-                    DMNT = self.send_and_read(f"o{name}.DMNT.GTDT[{i}]", buffer)
-                    backup.write(f"DMNT.STDT[{i}]={DMNT}")
-                for i in [0,1,2,3,8,9,10,11,12,13,14,15,16,17,18,19,40]:
-                    XAX1 = self.send_and_read(f"o{name}.XAX1.GTDT[{i}]", buffer)
-                    backup.write(f"XAX1.STDT[{i}]={XAX1}")
-                XAX1 = self.send_and_read(f"o{name}.XAX1.GPRM")
-                backup.write(f"XAX1.SPRM={XAX1}")
-                for i in range(4):
-                    ZAX1 = self.send_and_read(f"o{name}.ZAX1.GTDT[{i}]", buffer)
-                    backup.write(f"ZAX1.STDT[{i}]={ZAX1}")
-                ZAX1 = self.send_and_read(f"o{name}.ZAX1.GPRM")
-                backup.write(f"ZAX1.SPRM={ZAX1}")
-                for i in range(4):
-                    ROT1 = self.send_and_read(f"o{name}.ROT1.GTDT[{i}]", buffer)
-                    backup.write(f"ROT1.STDT[{i}]={ROT1}")
-                ROT1 = self.send_and_read(f"o{name}.ROT1.GPRM")
-                backup.write(f"ROT1.SPRM={ROT1}")
-                for i in range(4):
-                    ROT1 = self.send_and_read(f"o{name}.ROT1.GTDT[{i}]", buffer)
-                    backup.write(f"ROT1.STDT[{i}]={ROT1}")
-                ROT1 = self.send_and_read(f"o{name}.ROT1.GPRM")
-                backup.write(f"ROT1.SPRM={ROT1}")
-                for i in range(4):
-                    ARM1 = self.send_and_read(f"o{name}.ARM1.GTDT[{i}]", buffer)
-                    backup.write(f"ARM1.STDT[{i}]={ARM1}")
-                ARM1 = self.send_and_read(f"o{name}.ARM1.GPRM")
-                backup.write(f"ARM1.SPRM={ARM1}")
-                for i in range(4):
-                    ARM2 = self.send_and_read(f"o{name}.ARM2.GTDT[{i}]", buffer)
-                    backup.write(f"ARM2.STDT[{i}]={ARM2}")
-                ARM2 = self.send_and_read(f"o{name}.ARM2.GPRM")
-                backup.write(f"ARM2.SPRM={ARM2}")
-                for i in range(16):
-                    XAX1 = self.send_and_read(f"o{name}.XAX1.GEPM[{i}]", buffer)
-                    backup.write(f"XAX1.SEPM[{i}]={XAX1}")
-                for i in range(16):
-                    ZAX1 = self.send_and_read(f"o{name}.ZAX1.GEPM[{i}]", buffer)
-                    backup.write(f"ZAX1.SEPM[{i}]{ZAX1}")
-                for i in range(16):
-                    ROT1 = self.send_and_read(f"o{name}.ROT1.GEPM[{i}]", buffer)
-                    backup.write(f"ROT1.SEPM[{i}]={ROT1}")
-                for i in range(16):
-                    ARM1 = self.send_and_read(f"o{name}.ARM1.GEPM[{i}]", buffer)
-                    backup.write(f"ARM1.SEPM[{i}]={ARM1}")
-                for i in range(16):
-                    ARM2 = self.send_and_read(f"o{name}.ARM2.GEPM[{i}]", buffer)
-                    backup.write(f"ARM2.SEPM[{i}]={ARM2}")
-                for i in range(3):
-                    DAPM = self.send_and_read(f"o{name}.DAPM.GTDT[{i}]", buffer) 
-                    backup.write(f"DAPM.STDT[{i}]={DAPM}")
-                for i in range(32):
-                    DITK = self.send_and_read(f"o{name}.DITK.GTDT[{i}]", buffer) 
-                    backup.write(f"DITK.STDT[{i}]={DITK}")
-                for i in range(32):
-                    DOUT = self.send_and_read(f"o{name}.DOUT.GTDT[{i}]", buffer) 
-                    backup.write(f"DOUT.STDT[{i}]={DOUT}")
-                for i in range(400):
-                    DTRB = self.send_and_read(f"o{name}.DTRB.GTDA[{i}]", buffer)
-                    backup.write(f"DTRB.STDA[{i}]={DTRB}")
-                for i in range(400):
-                    DTUL = self.send_and_read(f"o{name}.DTUL.GTDA[{i}]", buffer)
-                    backup.write(f"DTUL.STDA[{i}]={DTUL}")
-                for i in range(400):
-                    DMPR = self.send_and_read(f"o{name}.DMPR.GTDT[{i}]", buffer) 
-                    backup.write(f"DMPR.STDT[{i}]={DMPR}")
-                for i in range(400):
-                    DCFG = self.send_and_read(f"o{name}.DCFG.GTDT[{i}]", buffer) 
-                    backup.write(f"DCFG.STDT[{i}]={DCFG}")
-                for i in range(4):
-                    for ii in range(400):
-                        DAXM = self.send_and_read(f"o{name}.DAXM.GTDT[{i}][{ii}]", buffer) 
-                        backup.write(f"DAXM.STDT[{i}][{ii}]={DAXM}")
-                for i in range(32):
-                    DSSC = self.send_and_read(f"o{name}.DSSC.GTDT[{i}]", buffer) 
-                    backup.write(f"DSSC.STDT[{i}]={DSSC}")
-                for i in range(4):
-                    DIND = self.send_and_read(f"o{name}.DIND.GTDT[{i}]", buffer) 
-                    backup.write(f"DIND.STDT[{i}]={DIND}")
-
-        def read_data_prealigner(self,filename):
-            """
-            This is for the standard no-vaccuum spindle prealigner.
-            Other prealigners will have different backup procedures.
-            """
-            with open(f"{filename}", "w") as backup:
-                read_block(self,"DRES", 1, "STDT", backup)
+                read_ip_prefix(self, backup)
                 read_block(self,"DEQU", 1, "STDT", backup)
+                read_block(self,"DRES", 1, "STDT", backup)
+                read_block(self,"DRCI", 5, "STDT", backup)
                 read_block(self,"DRCS", 5, "STDT", backup)
+                read_block(self,"DRCH", 5, "STDT", backup)
                 read_block(self,"DMNT", 5, "STDT", backup)
-                for i in range(5):
-                    read_block(self, "DSDB", 4, f"STDT[{i}]", backup)
-                read_block(self, "DTMP", 3, "STDT", backup)
-                read_block(self, "DCAM", 4, "STDT", backup)
-                read_block(self, "DALN", 10, "STDT", backup)
-                read_block(self, "DROT", 100, "STDT", backup)
-                read_block(self, "DSEN", 10, "STDT", backup)
-                read_block(self, "DRCP", 10, "STDT", backup)
+                read_block(self,"XAX1", [0,1,2,3,8,9,10,11,12,13,14,15,16,17,18,19,40], "STDT", backup)
+                read_block(self,"XAX1", 1, "SPRM", backup)
+                read_block(self,"ZAX1", 4, "STDT", backup)
+                read_block(self,"ZAX1", 1, "SPRM", backup)
+                read_block(self,"ROT1", 4, "STDT", backup)
+                read_block(self,"ROT1", 1, "SPRM", backup)
+                read_block(self,"ARM1", 4, "STDT", backup)
+                read_block(self,"ARM1", 1, "SPRM", backup)
+                read_block(self,"ARM2", 4, "STDT", backup)
+                read_block(self,"ARM2", 1, "SPRM", backup)
+                read_block(self,"XAX1", 16, "SEPM", backup)
+                read_block(self,"ZAX1", 16, "SEPM", backup)
+                read_block(self,"ROT1", 16, "SEPM", backup)
+                read_block(self,"ARM1", 16, "SEPM", backup)
+                read_block(self,"ARM2", 16, "SEPM", backup)
+                read_block(self,"DAPM", 3, "STDT", backup)
+                read_block(self,"DITK", 32, "STDT", backup)
+                read_block(self,"DOUT", 32, "STDT", backup)
+                read_block(self,"DTRB", 400, "STDA", backup)
+                read_block(self,"DTUL", 400, "STDA", backup)
+                read_block(self,"DMPR", 400, "STDT", backup)
+                read_block(self,"DCFG", 400, "STDT", backup)
+                for i in range(4):
+                    read_block(self, "DAXM", 400, f"STDT[{i}]", backup)
+                read_block(self,"DSSC", 32, "STDT", backup)
+                read_block(self,"DIND", 4, "STDT", backup)
 
-        def read_data_loadport(self,filename):
+        def read_data_prealigner(self, filename):
             with open(f"{filename}", "w") as backup:
 
-                # Read IP and cut Prefix from IP
-                IP = self.send_and_read(f"o{self.name}.GTDT[1]", 1000)
-                prefix = f"a{self.name}.GTDT:"
-                if not prefix == IP[:len(prefix)]:
-                    e = f"Mismatch between sent command and received command: {IP}"
-                    logger.error(e)
-                    raise Exception(e)
-                IP = IP[len(prefix):]
-                print(f"STDT[1]={IP}", file=backup)
+                if self.identifier == "RA320": #TODO Test this
+                    read_block(self,"DRES", 1, "STDT", backup)
+                    read_block(self,"DEQU", 1, "STDT", backup)
+                    read_block(self,"DRCS", 4, "STDT", backup)
+                    read_block(self,"DMNT", 4, "STDT", backup)
+                    for i in range(5):
+                        read_block(self, "DSDB", 3, f"STDT[{i}]", backup)
+                    read_block(self, "DTMP", 1, "STDT", backup)
+                    read_block(self, "DALN", 10, "STDT", backup)
+                    read_block(self, "DROT", 100, "STDT", backup)
+                    read_block(self, "DPRS", 1, "STDT", backup)
+                    read_block(self, "DSEN", 10, "STDT", backup)
+                    read_block(self, "DRCP", 10, "STDT", backup)
 
+                elif self.identifier == "RA320_003": #TODO Test this
+                    read_block(self,"DRES", 1, "STDT", backup)
+                    read_block(self,"DEQU", 1, "STDT", backup)
+                    read_block(self,"DRCS", 4, "STDT", backup)
+                    read_block(self,"DMNT", 4, "STDT", backup)
+                    for i in range(5):
+                        read_block(self, "DSDB", 3, f"STDT[{i}]", backup)
+                    read_block(self, "DTMP", 1, "STDT", backup)
+                    read_block(self, "DCAM", 4, "STDT", backup)
+                    read_block(self, "DALN", 10, "STDT", backup)
+                    read_block(self, "DROT", 100, "STDT", backup)
+                    read_block(self, "DSEN", 10, "STDT", backup)
+                    read_block(self, "DRCP", 10, "STDT", backup)
+
+                elif self.identifier == "RA420_001": #TODO Test this
+                    read_block(self,"DEQU", 1, "STDT", backup)
+                    read_block(self,"DRCS", 4, "STDT", backup)
+                    read_block(self,"DSAX", 10, "STDT", backup)
+                    read_block(self,"DSAY", 10, "STDT", backup)
+                    read_block(self,"DSAZ", 10, "STDT", backup)
+                    read_block(self,"DSAR", 10, "STDT", backup)
+                    read_block(self,"DMNT", 4, "STDT", backup)
+                    read_block(self,"DRES", 1, "STDT", backup)
+                    for i in range(5):
+                        read_block(self,"DSDB", 1, f"STDT[00{i}]", backup)
+                    read_block(self,"DTMP", 1, "STDT", backup)
+                    read_block(self,"DCAM", 4, "STDT", backup)
+                    read_block(self,"DAWS", 1, "STDT", backup)
+                    read_block(self,"DALN", 8, "STDT", backup)
+                    read_block(self,"DROT", 10, "STDT", backup)
+                    read_block(self,"DPRS", 1, "STDT", backup)
+                    read_block(self,"DSEN", 10, "STDT", backup)
+                    read_block(self,"DRCP", 10, "STDT", backup)
+                    read_block(self,"DITK", 64, "STDT", backup)
+                    read_block(self,"DOUT", 64, "STDT", backup)
+
+        def read_data_loadport(self,filename): #TODO Test this
+            with open(f"{filename}", "w") as backup:
+                read_ip_prefix(self, backup)
                 read_block(self, "DEQU", 1, "STDT", backup)
                 read_block(self, "DRES", 1, "STDT", backup)
                 read_block(self, "DRCI", 2, "STDT", backup)
@@ -669,7 +665,7 @@ class Rorze(Component):
                 read_block(self, "DCST", 1, "STDT", backup)
                 read_block(self, "DE84", 1, "STDT", backup)
         
-        def read_data_lineartrack(self,filename):
+        def read_data_lineartrack(self,filename): #TODO Test this
             with open(f"{filename}", "w") as backup:
                 read_block(self,"DEQU", 1, "STDT", backup)
                 read_block(self,"DRES", 1, "STDT", backup)

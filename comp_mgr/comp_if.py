@@ -178,7 +178,7 @@ class CompIF:
                     logger.info(f"Received component info: {comp_info}")
                     return comp_info
 
-                else: # TODO Add more components here
+                else:
                     comp_info["Name"] = None
                     comp_info["SN"] = None
                     comp_info["Identifier"] = None

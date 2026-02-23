@@ -34,6 +34,11 @@ NETWORK = {
     },
 }
 
+LOADPORTS = ["RV201-F07-000"]
+ROBOTS = ["RR754"]
+PREALIGNERS = ["RA320", "RA_320_003", "RA420_001"]
+OTHER = ["SIM_COMPONENT", "RTS13"]
+
 OTHER_IPS = {
     # "127.0.0.1":     "Simulation",
     "172.20.9.100":  "Loadport (Unconfigured)",
@@ -110,15 +115,12 @@ CONFIG_MENU_OPTIONS = {
     ]
 }
 
-# TODO Implement sub menus and component based commands in the component menu
 COMPONENT_MENU_OPTIONS = {
     'Common': [
         {'label': 'Get Status', 'type': 'command', 'action': 'get_status'},
         {'label': 'Change IP', 'type': 'value', 'action': 'change_IP', 'action_factory': 'change_IP_popup'},
-        {'label': 'Set Host IP', 'type': 'value', 'action': 'set_host_IP', 'action_factory': 'change_host_popup'},
-        {'label': 'Set TCP/IP Port', 'type': 'value', 'action': 'set_host_port', 'action_factory': 'change_port_popup'},
         {'label': 'Set Log Host IP', 'type': 'value', 'action': 'set_log_host', 'action_factory': 'change_log_host_popup'},
-        #{'label': 'Create backup (Read Data)', 'type': 'command', 'action': 'read_data'}
+        {'label': 'Create backup (Read Data)', 'type': 'command', 'action': 'read_data'}
     ],
     # 'SIM_COMPONENT': [
     #     {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'},
@@ -131,6 +133,7 @@ COMPONENT_MENU_OPTIONS = {
         {'label': 'Set Automatic Status Reports OFF (SAIO)', 'type': 'command', 'action': 'SAIO_off'},
         {'label': 'Set upper arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'upper_laser_popup'},
         {'label': 'Set lower arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'lower_laser_popup'},
+        {'label': 'No Interpolation', 'type': 'command', 'action': 'no_interpolation'}
     ],
     'RV201-F07-000': [
         {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'}
