@@ -222,6 +222,7 @@ class ComponentMenu:
                 selected = labels[current_row]
 
                 if selected == "Back":
+                    self.component.close_connection()
                     break
                 elif selected == "Quit":
                     sys.exit(0)

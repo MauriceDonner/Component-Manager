@@ -29,8 +29,6 @@ class Menu:
         self.status_message = None
         self.status_until = 0
         logger.info(40 * "=" + " PROGRAM START" + 40 * "=")
-        for i in self.ip_list:
-            logger.info(f"Found IP: {i}")
 
     def init_button_list(self):
         self.button_list = self.ip_list.copy()
@@ -101,7 +99,8 @@ class Menu:
         current_row = 0
         stdscr.timeout(500)
 
-        threading.Thread(target=self.update_main_buttons, daemon=True).start()
+        # threading.Thread(target=self.update_main_buttons, daemon=True).start()
+        self.update_main_buttons()
 
         while True:
             self.draw_main_menu(stdscr, current_row)
@@ -137,13 +136,14 @@ class Menu:
                         except TestException as e:
                             self.set_status(str(e), 3)
                 else:
+                    logger.debug(f"User selected {selected}.")
                     comp_if = CompIF()
                     comp_info = comp_if.get_component_info(selected)
                     # Check, if the component can be connected to
                     if comp_info["Identifier"]:
                         ComponentMenu(comp_info).run(stdscr)
                     else:
-                        self.set_status("You can only connect to automation components")
+                        self.set_status("Unable to connect to component")
                         stdscr.refresh()
                     current_row = 0 # After returning, select current row
 

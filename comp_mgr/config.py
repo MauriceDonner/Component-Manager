@@ -7,13 +7,11 @@ Contains all configuration data, such as static IPs or configuration parameters 
 NETWORK = {
     "SEMDEX": {
         "Robot":         "192.168.0.1",
-        "Pendant":       "192.168.0.2",
         "Lineartrack":   "192.168.0.3",
         "Loadport_1":    "192.168.0.21",
         "Loadport_2":    "192.168.0.22",
         "Loadport_3":    "192.168.0.23",
         "Prealigner":    "192.168.0.151",
-        "WID_Reader":    "192.168.0.161",
     },
     "WMC": {
         "Cam_Handling":  "192.168.30.4",
@@ -36,7 +34,7 @@ NETWORK = {
 
 LOADPORTS = ["RV201-F07-000"]
 ROBOTS = ["RR754"]
-PREALIGNERS = ["RA320", "RA_320_003", "RA420_001"]
+PREALIGNERS = ["RA320_002", "RA_320_003", "RA420_001"]
 OTHER = ["SIM_COMPONENT", "RTS13"]
 
 OTHER_IPS = {
@@ -49,6 +47,8 @@ OTHER_IPS = {
     "172.20.9.160":  "Prealigner (Unconfigured)",
     "172.20.9.161":  "Prealigner (Unconfigured)",
     "172.20.9.220":  "Teaching Pendant (Unconfigured)",
+    "192.168.0.2":   "SEMDEX Teaching Pendant",
+    "192.168.0.161": "SEMDEX WID reader",
     "192.168.30.1":  "WMC Software PC",
     "192.168.40.2":  "WMC Hardware PC",
     "192.168.30.55": "Reolink Camera (?)",

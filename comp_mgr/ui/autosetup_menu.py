@@ -280,7 +280,7 @@ class AutosetupMenu:
                         iptest = ipaddress.IPv4Address(ip)
                         component.change_IP(ip)
                     elif config_item == "Basic_Settings":
-                        component.basic_settings() #TODO
+                        component.basic_settings()
                     elif config_item == "Spindle_Fix":
                         component.spindle_fix() #TODO
                     elif config_item == "Slow_Mode":
@@ -291,7 +291,7 @@ class AutosetupMenu:
                         component.init_rotate() #TODO
                     elif config_item == "Set_Body_Number":
                         body_no = config["value"]
-                        component.set_body_number(body_no) #TODO
+                        component.set_body_number(body_no)
 
             # Save altered component backup
             component.read_data()

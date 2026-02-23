@@ -12,72 +12,82 @@ When new components are added, they must be implemented individually here for:
 import logging
 import os
 import socket
-import sys
 import threading
-import time
 from comp_mgr.exceptions import NoSystem
 from datetime import datetime
 from typing import TextIO, Union
-from comp_mgr.config import NETWORK, PREALIGNERS, LOADPORTS, ROBOTS, OTHER
+from comp_mgr.config import PREALIGNERS, LOADPORTS, ROBOTS, OTHER
 
 logger = logging.getLogger(__name__)
+    
+class Rorze():
 
-class Component:
-    TIMEOUT = 3.0
-    MOTION_TIMEOUT = 5.0
+    TIMEOUT = 1
+    MOTION_TIMEOUT = 5
 
     def __init__(self, comp_info: dict):
         self.ip = comp_info["IP"]
         # System (e.g. example 'WMC')
         self.system = comp_info["System"]
-        # Component type (e.g. 'Robot')
+        # Component type (e.g. 'eTRB0')
         self.type = comp_info["Type"]
-        # Display name for CLI (e.g. 'Robot')
-        self.display_name = comp_info["Name"]
+        # Display name for CLI (e.g. 'Rorze eTRB0')
+        self.display_name = f"Rorze {self.type}"
+        # Name of the component in Rorze terms (e.g. 'TRB0')
+        self.name = comp_info["Name"]
+        # Serial number of the component (if it exists)
+        self.sn = comp_info["SN"]
+        # Component Type (e.g. "RA320_003")
+        self.identifier = comp_info["Identifier"]
+        # Firmware Version
+        self.firmware = comp_info["Firmware"]
 
         self.status = "Initializing..."
         logger.info(f"Initializing {self.display_name}...")
         self.lock = threading.Lock()
         self.busy = False
-    
-    def establish_connection(self, port=12100, retries=1):
-        """
-        General attempt to establish connection to a component.
-        This method might never be used since the different components have their own class
-        """
 
+        self.establish_connection()
+
+    def establish_connection(self,port=12100):
+        """ Rorze specific connection that opens a socket and waits for an acknowledgement 'CNCT' """
         self.status = "Connecting..."
         logger.info(f"Connecting to {self.display_name}...")
-        logger.debug(f"IP: {self.ip}, System: {self.system}, Name: {self.display_name}, Type: {self.type}")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(self.TIMEOUT)
+        if self.identifier in PREALIGNERS:
+            # Prealigners need long sometimes
+            self.sock.settimeout(self.MOTION_TIMEOUT)
+        else:
+            self.sock.settimeout(self.TIMEOUT)
 
-        for i in range(retries+1):
+        try:
+            logger.debug(f"Rorze.establish_connection() -> Connecting to {self.ip}:{port}")
+            self.sock.connect((self.ip, port))
+            read = str(self.sock.recv(1024))[2:-3]
+            logger.debug(f"Rorze.establish_connection() -> Recieved: {read}")
 
-            try:
-                self.sock.connect((self.ip, port))
-                read = str(self.sock.recv(1024))
-                logger.debug(f"Recieved: {read}")
+            # Store component type!
+            self.type = read.split('.')[0]
 
-                if read:
-                    self.status = f"{self.type} is connected"
-                    logger.info(f"Connection to {self.display_name} successful")
-                    break
+            message = read.split('.')[1]
 
-            except socket.timeout:
-                self.status = "ERROR: Connection Timeout"
-                logger.error(f"Connection Timeout")
-                self.busy = True
-            except socket.error as e:
-                self.busy = True
-                if i == 0:
-                    logger.warning(f"Connection attempt unsuccessful... Retrying {retries} more time")
-                    time.sleep(1)
-                else:
-                    self.status = f"Socket error: {e}"
-                    logger.error(f"Socket error: {e}")
-            # finally:
-            #     self.busy = False
+            if "CNCT" in message:
+                self.status = f"{self.type} is connected"
+                logger.info(f"Connection to {self.display_name} successful")
+
+        except socket.timeout:
+            self.status = "ERROR: Connection Timeout"
+            logger.error(f"Connection Timeout")
+            self.busy = True
+        except socket.error as e:
+            self.busy = True
+            self.status = f"Socket error: {e}"
+            logger.error(f"Socket error: {e}")
+        finally:
+            self.busy = False
+
+    def close_connection(self):
+        self.sock.close()
     
     def recv_until_newline(self, timeout=TIMEOUT):
         self.sock.settimeout(timeout)
@@ -184,71 +194,6 @@ class Component:
             logger.info(f"Motion completed. {message}")
 
         return message
-
-class Rorze(Component):
-
-    def __init__(self, comp_info: dict):
-        self.ip = comp_info["IP"]
-        # System (e.g. example 'WMC')
-        self.system = comp_info["System"]
-        # Component type (e.g. 'eTRB0')
-        self.type = comp_info["Type"]
-        # Display name for CLI (e.g. 'Rorze eTRB0')
-        self.display_name = f"Rorze {self.type}"
-        # Name of the component in Rorze terms (e.g. 'TRB0')
-        self.name = comp_info["Name"]
-        # Serial number of the component (if it exists)
-        self.sn = comp_info["SN"]
-        # Component Type (e.g. "RA320_003")
-        self.identifier = comp_info["Identifier"]
-        # Firmware Version
-        self.firmware = comp_info["Firmware"]
-
-        self.status = "Initializing..."
-        logger.info(f"Initializing {self.display_name}...")
-        self.lock = threading.Lock()
-        self.busy = False
-
-        self.establish_connection()
-
-    def establish_connection(self,port=12100,retries=1):
-        """ Rorze specific connection that opens a socket and waits for an acknowledgement 'CNCT' """
-        self.status = "Connecting..."
-        logger.info(f"Connecting to {self.display_name}...")
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(self.TIMEOUT)
-
-        for i in range(retries+1):
-
-            try:
-                self.sock.connect((self.ip, port))
-                read = str(self.sock.recv(1024))[2:-3]
-                logger.debug(f"Recieved: {read}")
-
-                # Store component type!
-                self.type = read.split('.')[0]
-
-                message = read.split('.')[1]
-
-                if message == "CNCT":
-                    self.status = f"{self.type} is connected"
-                    logger.info(f"Connection to {self.display_name} successful")
-                    break
-
-            except socket.timeout:
-                self.status = "ERROR: Connection Timeout"
-                logger.error(f"Connection Timeout")
-                self.busy = True
-            except socket.error as e:
-                self.busy = True
-                if i == 0:
-                    logger.warning(f"Connection attempt unsuccessful... Retrying {retries} more time")
-                    time.sleep(1)
-                else:
-                    self.status = f"Socket error: {e}"
-                    logger.error(f"Socket error: {e}")
-            # finally:
-            #     self.busy = False
     
     def read_name(self):
         """
@@ -597,7 +542,7 @@ class Rorze(Component):
         def read_data_prealigner(self, filename):
             with open(f"{filename}", "w") as backup:
 
-                if self.identifier == "RA320": #TODO Test this
+                if self.identifier == "RA320_002": #TODO Test this
                     read_block(self,"DRES", 1, "STDT", backup)
                     read_block(self,"DEQU", 1, "STDT", backup)
                     read_block(self,"DRCS", 4, "STDT", backup)
@@ -694,13 +639,13 @@ class Rorze(Component):
                 break
 
         try: 
-            if self.identifier == "RV201-F07-000":
+            if self.identifier in LOADPORTS:
                 logger.info(f"Starting Loadport Backup for {self.name}.")
                 read_data_loadport(self, filename)
-            elif self.identifier == "RR754":
+            elif self.identifier in ROBOTS:
                 logger.info(f"Starting Robot Backup for {self.name}")
                 read_data_robot(self, filename)
-            elif self.identifier in ["RA320", "RA420_001", "RA320_001"]:
+            elif self.identifier in PREALIGNERS:
                 logger.info(f"Starting Prealigner Backup for {self.name}")
                 read_data_prealigner(self, filename)
             elif self.identifier == "RTS13":

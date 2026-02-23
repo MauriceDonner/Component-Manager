@@ -10,7 +10,6 @@ import socket
 import subprocess
 import time
 from comp_mgr.config import NETWORK, OTHER_IPS
-from comp_mgr.comp import Component
 
 logger = logging.getLogger(__name__)
 
@@ -53,28 +52,6 @@ class CompIF:
 
         return alive
 
-    # Check which type of component is connected
-    def check_component_type(comp_info: dict):
-        component = Component(
-            ip = comp_info["IP"],
-            system = comp_info["system"],
-            type = comp_info["type"]
-        )
-
-        try:
-            component.establish_connection() # Modifies its type
-        except Exception as e:
-            logger.error(f"Failed to establish connection to Component {component.type}")
-            raise Exception(f"Failed to establish connection to Component {component.type}: {e}")
-            
-        # If rorze component is connected use a diffent class
-        if any(p in component.type for p in ['TRB','ALN','STG']):
-            logger.info(f"Component type detected: Rorze ({component.type})")
-            return component.type
-        else:
-            logger.error(f"Unknown Component type {component.type}")
-            raise Exception(f"Unkown Component type {component.type}")
-
     def send_and_read_rorze(self, sock: socket.socket, command: str, buffer: int=1024) -> str:
 
         # Add a \r at the end of a command!
@@ -102,16 +79,17 @@ class CompIF:
             for component, ip in components.items():
                 if ip == target_ip:
                     ip_info = {"IP": ip, "System": system, "Type": component}
-                    logger.info(f"Received ip info: {ip_info}")
+                    logger.debug(f"CompIF.get_ip_info() -> IP info: {ip_info}")
                     return ip_info
+
         for ip, description in OTHER_IPS.items():
             if ip == target_ip:
                 ip_info = {"IP": ip, "System": None, "Type": description}
-                logger.info(f"Received ip info: {ip_info}")
+                logger.debug(f"CompIF.get_ip_info() -> IP info: {ip_info}")
                 return ip_info
         
         ip_info = {"IP": ip, "System": None, "Type": "Unknown IP"}
-        logger.info(f"Received ip info: {ip_info}")
+        logger.debug(f"CompIF.get_ip_info() -> IP info: {ip_info}")
         return ip_info
 
     def get_component_info(self, ip: str, port:int=12100) -> dict:
@@ -144,54 +122,53 @@ class CompIF:
             comp_info["Firmware"] = '1.19U'
             return comp_info
 
-        # TODO: Add check, whether it can be connected to (aka only connect to robot, PA, or Loadport)
-
         # If its a component, find out which type
         logger.info(f"Connecting to {ip}...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(self.TIMEOUT)
-        retries = 0
 
-        for i in range(retries+1):
+        try:
+            sock.connect((ip, port))
+            read = str(sock.recv(1024))
+            logger.debug(f"Comp_IF.get_component_info -> Received: {read}")
+            message = read[2:-3] # Cuts the b' and \\r
 
-            try:
-                sock.connect((ip, port))
-                read = str(sock.recv(1024))
-                message = read[2:-3] # Cuts the b' and \\r
+            # If Rorze component, return name and serial number
+            if any(p in read for p in ['TRB','ALN','STG','TBL']):
+                name = message.split('.')[0][1:]
+                logger.info(f"Component type detected: Rorze {name}")
+                # Get Rorze Serial Number
+                sn_command = f"o{name}.DEQU.GTDT[0]"
+                serial_number = self.send_and_read_rorze(sock,sn_command)
+                # Get Rorze Component Type and Firmware version
+                # Example str: aTRB0.GVER:RORZE STD_TRB RR754 Ver 1.19U (2020/12/17)
+                verstring = self.send_and_read_rorze(sock, f"o{name}.GVER")
+                identifier = verstring.split(" Ver ")[0].split(" ")[-1]
+                firmware = verstring.split(" Ver ")[1][:5]
+                comp_info["Name"] = name
+                comp_info["SN"] = serial_number.split('"')[1]
+                comp_info["Identifier"] = identifier
+                comp_info["Firmware"] = firmware
+                logger.info(f"Received component info: {comp_info}")
 
-                # If Rorze component, return name and serial number
-                if any(p in read for p in ['TRB','ALN','STG','TBL']):
-                    name = message.split('.')[0][1:]
-                    logger.info(f"Component type detected: Rorze {name}")
-                    # Get Rorze Serial Number
-                    sn_command = f"o{name}.DEQU.GTDT[0]"
-                    serial_number = self.send_and_read_rorze(sock,sn_command)
-                    # Get Rorze Component Type and Firmware version
-                    # Example str: aTRB0.GVER:RORZE STD_TRB RR754 Ver 1.19U (2020/12/17)
-                    verstring = self.send_and_read_rorze(sock, f"o{name}.GVER")
-                    identifier = verstring.split(" Ver ")[0].split(" ")[-1]
-                    firmware = verstring.split(" Ver ")[1][:5]
-                    comp_info["Name"] = name
-                    comp_info["SN"] = serial_number.split('"')[1]
-                    comp_info["Identifier"] = identifier
-                    comp_info["Firmware"] = firmware
-                    logger.info(f"Received component info: {comp_info}")
-                    return comp_info
+                # If prealigner, set the status events to off (done by maintenance software)
+                self.send_and_read_rorze(sock, f"o{name}.EVNT(0,0)")
+                sock.close()
+                return comp_info
 
-                else:
-                    comp_info["Name"] = None
-                    comp_info["SN"] = None
-                    comp_info["Identifier"] = None
-                    comp_info["Firmware"] = None
-                    logger.info(f"Received component info: {comp_info}")
-                    return comp_info
+            else:
+                comp_info["Name"] = None
+                comp_info["SN"] = None
+                comp_info["Identifier"] = None
+                comp_info["Firmware"] = None
+                logger.info(f"Received component info: {comp_info}")
+                sock.close()
+                return comp_info
 
-            except socket.timeout:
-                logger.warning(f"Connection Timeout when connecting to {ip}... Retrying {retries-i} more times.")
-                time.sleep(1)
-            except socket.error as e:
-                logger.warning(f"Connection attempt to {ip} unsuccessful... Retrying {retries-i} more times.")
-                time.sleep(1)
+        except socket.timeout:
+            logger.warning(f"Comp_IF.get_component_info() -> Connection Timeout when connecting to {ip}.")
+        except socket.error as e:
+            logger.warning(f"Comp_IF.get_component_info -> Connection attempt to unsuccessful: {e}")
 
         # If no connection can be established, return empty info
         comp_info["Name"] = None
