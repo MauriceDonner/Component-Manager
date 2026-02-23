@@ -440,7 +440,6 @@ class Rorze():
             prefix = f"a{self.name}.GTDT:"
             if not prefix == IP[:len(prefix)]:
                 e = f"Mismatch between sent command and received command: {IP}"
-                logger.error(e)
                 raise Exception(e)
             IP = IP[len(prefix):]
             print(f"STDT[1]={IP}", file=file)
@@ -470,7 +469,6 @@ class Rorze():
                 prefix = f"a{name}.{block_name}.{get_command}:"
                 if not prefix == block[:len(prefix)]:
                     e = f"Mismatch between sent command and received command: {block}"
-                    logger.error(e)
                     raise Exception(e)
                 block = block[len(prefix):]
 
@@ -492,10 +490,9 @@ class Rorze():
                     block = self.send_and_read(f"o{name}.{block_name}.{get_command}[{idx}]",buffer)
 
                     # Cut Prefix from block
-                    prefix = f"a{name}.{block_name}.{get_command}:"
+                    prefix = f"a{name}.{block_name}.{get_command[:4]}:" # Cuts the bracket of the get command GTDT[000]
                     if not prefix == block[:len(prefix)]:
                         e = f"Mismatch between sent command and received command: {block} / {prefix}"
-                        logger.error(e)
                         raise Exception(e)
                     block = block[len(prefix):]
 
@@ -543,54 +540,54 @@ class Rorze():
             with open(f"{filename}", "w") as backup:
 
                 if self.identifier == "RA320_002": #TODO Test this
-                    read_block(self,"DRES", 1, "STDT", backup)
-                    read_block(self,"DEQU", 1, "STDT", backup)
-                    read_block(self,"DRCS", 4, "STDT", backup)
-                    read_block(self,"DMNT", 4, "STDT", backup)
+                    read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DEQU", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DRCS", 4, "STDT", backup, add_leading=True)
+                    read_block(self,"DMNT", 4, "STDT", backup, add_leading=True)
                     for i in range(5):
-                        read_block(self, "DSDB", 3, f"STDT[{i}]", backup)
-                    read_block(self, "DTMP", 1, "STDT", backup)
-                    read_block(self, "DALN", 10, "STDT", backup)
-                    read_block(self, "DROT", 100, "STDT", backup)
-                    read_block(self, "DPRS", 1, "STDT", backup)
-                    read_block(self, "DSEN", 10, "STDT", backup)
-                    read_block(self, "DRCP", 10, "STDT", backup)
+                        read_block(self, "DSDB", 3, f"STDT[{i:03}]", backup, add_leading=True)
+                    read_block(self, "DTMP", 1, "STDT", backup, add_leading=True)
+                    read_block(self, "DALN", 10, "STDT", backup, add_leading=True)
+                    read_block(self, "DROT", 100, "STDT", backup, add_leading=True)
+                    read_block(self, "DPRS", 1, "STDT", backup, add_leading=True)
+                    read_block(self, "DSEN", 10, "STDT", backup, add_leading=True)
+                    read_block(self, "DRCP", 10, "STDT", backup, add_leading=True)
 
                 elif self.identifier == "RA320_003": #TODO Test this
-                    read_block(self,"DRES", 1, "STDT", backup)
-                    read_block(self,"DEQU", 1, "STDT", backup)
-                    read_block(self,"DRCS", 4, "STDT", backup)
-                    read_block(self,"DMNT", 4, "STDT", backup)
+                    read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DEQU", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DRCS", 4, "STDT", backup, add_leading=True)
+                    read_block(self,"DMNT", 4, "STDT", backup, add_leading=True)
                     for i in range(5):
-                        read_block(self, "DSDB", 3, f"STDT[{i}]", backup)
-                    read_block(self, "DTMP", 1, "STDT", backup)
-                    read_block(self, "DCAM", 4, "STDT", backup)
-                    read_block(self, "DALN", 10, "STDT", backup)
-                    read_block(self, "DROT", 100, "STDT", backup)
-                    read_block(self, "DSEN", 10, "STDT", backup)
-                    read_block(self, "DRCP", 10, "STDT", backup)
+                        read_block(self, "DSDB", 3, f"STDT[{i:03}]", backup, add_leading=True)
+                    read_block(self, "DTMP", 1, "STDT", backup, add_leading=True)
+                    read_block(self, "DCAM", 4, "STDT", backup, add_leading=True)
+                    read_block(self, "DALN", 10, "STDT", backup, add_leading=True)
+                    read_block(self, "DROT", 100, "STDT", backup, add_leading=True)
+                    read_block(self, "DSEN", 10, "STDT", backup, add_leading=True)
+                    read_block(self, "DRCP", 10, "STDT", backup, add_leading=True)
 
                 elif self.identifier == "RA420_001": #TODO Test this
-                    read_block(self,"DEQU", 1, "STDT", backup)
-                    read_block(self,"DRCS", 4, "STDT", backup)
-                    read_block(self,"DSAX", 10, "STDT", backup)
-                    read_block(self,"DSAY", 10, "STDT", backup)
-                    read_block(self,"DSAZ", 10, "STDT", backup)
-                    read_block(self,"DSAR", 10, "STDT", backup)
-                    read_block(self,"DMNT", 4, "STDT", backup)
-                    read_block(self,"DRES", 1, "STDT", backup)
+                    read_block(self,"DEQU", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DRCS", 4, "STDT", backup, add_leading=True)
+                    read_block(self,"DSAX", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DSAY", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DSAZ", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DSAR", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DMNT", 4, "STDT", backup, add_leading=True)
+                    read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
                     for i in range(5):
-                        read_block(self,"DSDB", 1, f"STDT[00{i}]", backup)
-                    read_block(self,"DTMP", 1, "STDT", backup)
-                    read_block(self,"DCAM", 4, "STDT", backup)
-                    read_block(self,"DAWS", 1, "STDT", backup)
-                    read_block(self,"DALN", 8, "STDT", backup)
-                    read_block(self,"DROT", 10, "STDT", backup)
-                    read_block(self,"DPRS", 1, "STDT", backup)
-                    read_block(self,"DSEN", 10, "STDT", backup)
-                    read_block(self,"DRCP", 10, "STDT", backup)
-                    read_block(self,"DITK", 64, "STDT", backup)
-                    read_block(self,"DOUT", 64, "STDT", backup)
+                        read_block(self,"DSDB", 3, f"STDT[{i:03}]", backup, add_leading=True)
+                    read_block(self,"DTMP", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DCAM", 4, "STDT", backup, add_leading=True)
+                    read_block(self,"DAWS", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DALN", 8, "STDT", backup, add_leading=True)
+                    read_block(self,"DROT", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DPRS", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DSEN", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DRCP", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DITK", 64, "STDT", backup, add_leading=True)
+                    read_block(self,"DOUT", 64, "STDT", backup, add_leading=True)
 
         def read_data_loadport(self,filename): #TODO Test this
             with open(f"{filename}", "w") as backup:
@@ -626,7 +623,7 @@ class Rorze():
         # Timestamp
         ts = datetime.now().strftime("%Y%m%d")
         index = 0
-        filename = f"{self.sn}_{ts}_{index}.dat"
+        filename = f"{self.identifier}_{self.sn}_{ts}_{index}.dat"
         logger.debug(f"Reading data to {filename}")
 
         # Make sure to not overwrite a previous backup
