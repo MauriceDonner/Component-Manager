@@ -270,6 +270,8 @@ class AutosetupMenu:
             # Save original component backup
             component.read_data()
 
+            #TODO Check, that the file is actually there and non-empty
+
             # If config enabled -> Configure component
             if not entry['Configure']: continue
 

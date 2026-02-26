@@ -20,6 +20,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
+logging.raiseExceptions = True
 
 class Menu:
 
@@ -70,7 +71,6 @@ class Menu:
             self.buttons[ip] = info
 
         for ip in self.ip_list:
-            #TODO Check if threading here is unnecessary since you also start threading in the previous call
             threading.Thread(target=update_button, args=(ip,),daemon=True).start()
 
     def draw_main_menu(self, stdscr, current_row):

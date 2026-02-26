@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 class Rorze():
 
     TIMEOUT = 1
-    MOTION_TIMEOUT = 5
+    MOTION_TIMEOUT = 12
+    CNCT_TIMEOUT = 5
 
     def __init__(self, comp_info: dict):
         self.ip = comp_info["IP"]
@@ -54,12 +55,7 @@ class Rorze():
         self.status = "Connecting..."
         logger.info(f"Connecting to {self.display_name}...")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if self.identifier in PREALIGNERS:
-            # Prealigners need long sometimes
-            self.sock.settimeout(self.MOTION_TIMEOUT)
-        else:
-            self.sock.settimeout(self.TIMEOUT)
-
+        self.sock.settimeout(self.CNCT_TIMEOUT)
         try:
             logger.debug(f"Rorze.establish_connection() -> Connecting to {self.ip}:{port}")
             self.sock.connect((self.ip, port))
@@ -74,7 +70,6 @@ class Rorze():
             if "CNCT" in message:
                 self.status = f"{self.type} is connected"
                 logger.info(f"Connection to {self.display_name} successful")
-
         except socket.timeout:
             self.status = "ERROR: Connection Timeout"
             logger.error(f"Connection Timeout")
@@ -86,11 +81,12 @@ class Rorze():
         finally:
             self.busy = False
 
+        self.sock.settimeout(self.TIMEOUT)
+
     def close_connection(self):
         self.sock.close()
     
-    def recv_until_newline(self, timeout=TIMEOUT):
-        self.sock.settimeout(timeout)
+    def recv_until_newline(self):
         data = b""
         while True:
             chunk = self.sock.recv(1024)
@@ -110,29 +106,29 @@ class Rorze():
             self.busy = True
             logger.debug(f"Sending: {command}")
             self.sock.sendall(command.encode('utf-8')) 
-            self.status = "Reading data..."
             try: 
                 read = self.recv_until_newline()
                 logger.debug(f"Receive: {read}")
                 message = read
-                try:
-                    # Simulation always treats it like motion command
-                    self.sock.settimeout(self.MOTION_TIMEOUT)
-                    self.status = "Waiting for motion..."
-                    if "SIMULATION" in self.type:
-                        read = self.sock.recv(1024)
-                        logger.debug(f"Receive: {read}")
-                        message = read 
-                except socket.timeout:
-                    logger.error("Motion timed out.")
-                self.sock.settimeout(self.TIMEOUT)
+                # try:
+                #     # Simulation always treats it like motion command
+                #     self.sock.settimeout(self.MOTION_TIMEOUT)
+                #     self.status = "Waiting for motion..."
+                #     if "SIMULATION" in self.type:
+                #         read = self.sock.recv(1024)
+                #         logger.debug(f"Receive: {read}")
+                #         message = read 
+                # except socket.timeout:
+                #     logger.error("Motion timed out.")
+                # self.sock.settimeout(self.TIMEOUT)
             except socket.error as e:
                 self.status = f"Socket error: {e}"
                 logger.error(f"Socket error: {e}")
             finally:
                 self.busy = False
         
-        self.status = f"Output: {message}"
+        #TODO Don't put this into the status. Rather interpret, so status isnt spammed during read
+        # self.status = f"Output: {message}"
 
         return message
 
@@ -144,7 +140,6 @@ class Rorze():
             logger.debug(f"Sending: {command}")
             read = str(self.sock.recv(buffer))[2:-3]
             message = read #.split('.')[1]
-            self.status = "Reading data..."
             logger.debug(f"Reading data... {message}")
             # Wait until reading finishes finishes
             try: 
@@ -371,22 +366,27 @@ class Rorze():
         self.write_changes()
     
     def no_interpolation(self): #TODO Test this
+        self.busy=True
+        self.status="Applying no interpolation..."
         case_1 = '"","","","","",00003,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000'
         case_2 = '"","","","","",00000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000'
         for idx in range(400):
-            command = f"{self.read_name()}.DCFG="
+            command = f"{self.read_name()}.DCFG.STDT[{idx}]="
             if idx in [0,10,11,12,13]:
                 command+=case_1
             else:
                 command+=case_2
             self.send_and_read(command)
         self.write_changes()
+        self.busy=False
     
     def write_changes(self):
-        self.sock.settimeout(self.MOTION_TIMEOUT)
+        self.sock.settimeout(60)
+        self.status = "Writing to flash memory..."
         acknowledge = self.send_and_read(f"{self.read_name()}.WTDT")
         logger.debug(f"Writing data to flash memory: {acknowledge}")
-        self.sock.settimout(self.TIMEOUT)
+        self.status = "Changes saved to flash memory."
+        self.sock.settimeout(self.TIMEOUT)
     
     def basic_settings(self):
         """
@@ -434,6 +434,11 @@ class Rorze():
         This serves the same purpose as the 'Read Data' button in the
         Rorze maintenance software. It is slightly different for each component.
         """
+        # Save log level and set to INFO
+        log_level = logging.getLogger(__name__).level
+        logging.getLogger(__name__).setLevel(logging.INFO)
+
+        self.status = "Reading data..."
         
         def read_ip_prefix(self, file):
             IP = self.send_and_read(f"o{self.name}.GTDT[1]", 1000)
@@ -466,17 +471,13 @@ class Rorze():
                 block = self.send_and_read(f"o{name}.{block_name}.{get_command}",buffer)
 
                 # Cut Prefix from block
-                prefix = f"a{name}.{block_name}.{get_command}:"
+                prefix = f"a{name}.{block_name}.{get_command[:4]}:" # Cuts the bracket of the get command GTDT[000]
                 if not prefix == block[:len(prefix)]:
-                    e = f"Mismatch between sent command and received command: {block}"
+                    e = f"Mismatch between sent command and received command: {block} / {prefix}"
                     raise Exception(e)
                 block = block[len(prefix):]
 
-                # Add [0], if this is required (Lineartrack does this) #TODO Test this by reading Lineartrack data
-                if add_brackets:
-                    set_string = f"{block_name}.{set_command}[0]={block}"
-                else:
-                    set_string = f"{block_name}.{set_command}={block}"
+                set_string = f"{block_name}.{set_command}={block}"
                 
                 # Write to file
                 print(set_string, file=file)
@@ -498,10 +499,29 @@ class Rorze():
 
                     # Write to file
                     print(f"{block_name}.{set_command}[{idx}]={block}", file=file)
-                    # file.write(f"{block_name}.{command}={block}\n") # TODO remove if not needed
 
         def read_data_robot(self, filename):
-            with open(f"{filename}", "w") as backup:
+            """
+            Robot backup depends whether the robot has a linear track,
+            and also on its arm configuration, so these parameters need to be saved
+            """
+            # If no x-axis, the XAX1 parameter becomes shorter
+            xaxis = int(self.send_and_read(f"{self.read_name()}.DEQU.GTDT[18]").split(':')[1])
+            logger.debug(f"XAXIS: {xaxis}")
+            if xaxis == 0:
+                XAX1_list = [0,1,2,3]
+            else:
+                XAX1_list = [0,1,2,3,8,9,10,11,12,13,14,15,16,17,18,19,40]
+
+            arm_config = self.send_and_read(f"{self.read_name()}.DEQU.GTDT[16]")
+            logger.debug(f"arm_config: {arm_config}, Type: {type(arm_config)}")
+            arm_config = int(arm_config.split(":")[1])
+            logger.debug(f"arm_config after changes: {arm_config}")
+            arm1 = hex(arm_config)[-4:-2]
+            arm2 = hex(arm_config)[-6:-4]
+            logger.debug(f"arm config: {arm1}, {arm2}")
+
+            with open(f"{filename}", "x") as backup:
                 read_ip_prefix(self, backup)
                 read_block(self,"DEQU", 1, "STDT", backup)
                 read_block(self,"DRES", 1, "STDT", backup)
@@ -509,7 +529,7 @@ class Rorze():
                 read_block(self,"DRCS", 5, "STDT", backup)
                 read_block(self,"DRCH", 5, "STDT", backup)
                 read_block(self,"DMNT", 5, "STDT", backup)
-                read_block(self,"XAX1", [0,1,2,3,8,9,10,11,12,13,14,15,16,17,18,19,40], "STDT", backup)
+                read_block(self,"XAX1", XAX1_list, "STDT", backup)
                 read_block(self,"XAX1", 1, "SPRM", backup)
                 read_block(self,"ZAX1", 4, "STDT", backup)
                 read_block(self,"ZAX1", 1, "SPRM", backup)
@@ -535,11 +555,14 @@ class Rorze():
                     read_block(self, "DAXM", 400, f"STDT[{i}]", backup)
                 read_block(self,"DSSC", 32, "STDT", backup)
                 read_block(self,"DIND", 4, "STDT", backup)
+                # If Framed arm is present, read DALN
+                if any(arm == "25" for arm in [arm1, arm2]):
+                    read_block(self,"DALN", 32, "STDT", backup)
 
         def read_data_prealigner(self, filename):
-            with open(f"{filename}", "w") as backup:
+            with open(f"{filename}", "x") as backup:
 
-                if self.identifier == "RA320_002": #TODO Test this
+                if self.identifier == "RA320_002":
                     read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
                     read_block(self,"DEQU", 1, "STDT", backup, add_leading=True)
                     read_block(self,"DRCS", 4, "STDT", backup, add_leading=True)
@@ -589,8 +612,8 @@ class Rorze():
                     read_block(self,"DITK", 64, "STDT", backup, add_leading=True)
                     read_block(self,"DOUT", 64, "STDT", backup, add_leading=True)
 
-        def read_data_loadport(self,filename): #TODO Test this
-            with open(f"{filename}", "w") as backup:
+        def read_data_loadport(self,filename):
+            with open(f"{filename}", "x") as backup:
                 read_ip_prefix(self, backup)
                 read_block(self, "DEQU", 1, "STDT", backup)
                 read_block(self, "DRES", 1, "STDT", backup)
@@ -608,13 +631,13 @@ class Rorze():
                 read_block(self, "DE84", 1, "STDT", backup)
         
         def read_data_lineartrack(self,filename): #TODO Test this
-            with open(f"{filename}", "w") as backup:
+            with open(f"{filename}", "x") as backup:
                 read_block(self,"DEQU", 1, "STDT", backup)
                 read_block(self,"DRES", 1, "STDT", backup)
-                read_block(self,"DRCI", 1, "STDT", backup, add_brackets=True)
-                read_block(self,"DRCS", 1, "STDT", backup, add_brackets=True)
-                read_block(self,"DRCH", 1, "STDT", backup, add_brackets=True)
-                read_block(self,"DMNT", 1, "STDT", backup, add_brackets=True)
+                read_block(self,"DRCI", 1, "STDT[0]", backup, add_brackets=True) # Lineartrack needs extra [0]
+                read_block(self,"DRCS", 1, "STDT[0]", backup, add_brackets=True)
+                read_block(self,"DRCH", 1, "STDT[0]", backup, add_brackets=True)
+                read_block(self,"DMNT", 1, "STDT[0]", backup, add_brackets=True)
                 read_block(self,"XAX1", [0,1,2,8,9,10,11,12,13,14,15,16,17,18,19,40], "STDT", backup)
                 read_block(self,"XAX1", 1, "SPRM", backup)
                 read_block(self,"XAX1", 16, "SEPM", backup)
@@ -622,15 +645,15 @@ class Rorze():
 
         # Timestamp
         ts = datetime.now().strftime("%Y%m%d")
-        index = 0
-        filename = f"{self.identifier}_{self.sn}_{ts}_{index}.dat"
+        index = 1
+        filename = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}.dat"
         logger.debug(f"Reading data to {filename}")
 
         # Make sure to not overwrite a previous backup
         file_exists = 1 if os.path.exists(filename) else 0
         while file_exists:
             index+=1
-            filename = f"{self.sn}_{ts}_{index}.dat"
+            filename = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}.dat"
             logger.warning(f"File exists! Changing filename to {filename}")
             if not os.path.exists(filename):
                 break
@@ -652,7 +675,12 @@ class Rorze():
                 error = f"Backup not implemented for component {self.identifier}"
                 logger.error(error)
                 raise Exception(error)
-            self.status = f"Backup saved to '{filename}'"
+            status = f"Backup saved to '{filename}'"
+            self.status = status
+            logger.info(status)
         except Exception as e:
             logger.error(f"Reading failed: {e}")
             self.status = {f"Reading failed: {e}"}
+
+        # restore log level
+        logging.getLogger(__name__).setLevel(log_level)
