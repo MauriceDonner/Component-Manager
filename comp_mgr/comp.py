@@ -98,7 +98,6 @@ class Rorze():
         return data.decode('utf-8').strip()
 
     def send_and_read(self, command: str, buffer: int=1024) -> str:
-
         # Add a \r at the end of a command!
         command = f"{command}\r"
 
@@ -127,54 +126,21 @@ class Rorze():
             finally:
                 self.busy = False
         
-        #TODO Don't put this into the status. Rather interpret, so status isnt spammed during read
-        # self.status = f"Output: {message}"
-
         return message
 
-    def send_and_read_data(self,command,buffer=2**21):
-        
-        with self.lock:
-            self.busy = True
-            self.sock.sendall(command.encode('utf-8'))
-            logger.debug(f"Sending: {command}")
-            read = str(self.sock.recv(buffer))[2:-3]
-            message = read #.split('.')[1]
-            logger.debug(f"Reading data... {message}")
-            # Wait until reading finishes finishes
-            try: 
-                self.sock.settimeout(self.TIMEOUT)
-                read = str(self.sock.recv(buffer))[2:-3]
-                logger.debug(f"Reading data... {message}")
-                message = read #.split('.')[1]
-            except socket.timeout:
-                self.status = "ERROR: Reading timeout"
-                logger.error(f"Reading timeout")
-            except socket.error as e:
-                self.status = f"Socket error: {e}"
-                logger.error(f"Socket error: {e}")
-            finally:
-                self.busy = False
-            
-            self.status = f"Reading completed. {message}"
-            logger.info(f"Reading completed. {message}")
-
-        return message
-    
     def send_and_read_motion(self,command,buffer=1024):
         
         with self.lock: # TODO THIS SHOULD NOT BLOCKING -- EMO NEEDS TO BE POSSIBLE
             self.busy = True
-            self.sock.sendall(command.encode('utf-8'))
             logger.debug(f"Sending: {command}")
-            read = str(self.sock.recv(buffer))[2:-3]
-            message = read #.split('.')[1]
-            self.status = "Component is in motion..."
-            logger.debug(f"Component is in motion... {message}")
-            # Wait until motion finishes
+            self.sock.sendall(command.encode('utf-8'))
             try: 
+                read = self.recv_until_newline()
+                message = read #.split('.')[1]
+                self.status = "Component is in motion..."
+                logger.debug(f"Component is in motion... {message}")
                 self.sock.settimeout(self.MOTION_TIMEOUT)
-                read = str(self.sock.recv(buffer))[2:-3]
+                read = self.recv_until_newline()
                 message = read #.split('.')[1]
             except socket.timeout:
                 self.status = "ERROR: Motion timeout"
@@ -185,8 +151,8 @@ class Rorze():
             finally:
                 self.busy = False
             
-            self.status = f"Motion completed. {message}"
-            logger.info(f"Motion completed. {message}")
+            self.status = f"Motion completed {message}"
+            logger.info(f"Motion completed {message}")
 
         return message
     
@@ -202,192 +168,8 @@ class Rorze():
             name = "o"+self.name[-4:]
         return name
 
-    def origin_search(self, p1: int=0, p2: int=0):
-        command = f"{self.read_name()}.ORGN({p1},{p2})"
-        message = self.send_and_read_motion(command)
-        self.status = f"Origin search completed: {message}"
+    # ========== Define commands here ==========
 
-    def get_rotary_switch_value(self):
-        command = f"{self.read_name()}.GTDT[3]"
-        message = self.send_and_read(command)
-        self.status = f"Rotary switch position: {message}"
-
-    def get_status(self):
-        command = f"{self.read_name()}.STAT"
-        message = self.send_and_read(command)
-        self.status = f"{message}"
-
-    def change_IP(self, ip):
-        # Implement different component types here
-        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
-            command = f"{self.read_name()}.STDT[1]={ip}"
-        elif self.identifier in PREALIGNERS:
-            command = f"{self.read_name()}.DEQU.STDT[3]={ip}"
-        else:
-            status = f"Component type {self.identifier} has not been implemented"
-            self.status = status
-            logger.error(status)
-            return
-
-        message = self.send_and_read(command)
-        self.write_changes()
-        self.status = f"IP set to {ip}. Please restart the component. ({message})"
-
-    def get_host_IP(self):
-        command = f"{self.read_name()}.DEQU.GTDT[1]"
-        ip = self.send_and_read(command)
-        return ip
-    
-    def get_host_port(self):
-        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
-            command = f"{self.read_name()}.DEQU.GTDT[68]"
-            port = self.send_and_read(command)
-            return port
-        elif self.identifier in PREALIGNERS:
-            command = f"{self.read_name()}.DEQU.GTDT[2]"
-            port = self.send_and_read(command)
-            return port
-        else:
-            return None
-        
-    def get_log_host(self):
-        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
-            command = f"{self.read_name()}.DEQU.GTDT[69]"
-            ip = self.send_and_read(command)
-            return ip
-        elif self.identifier in PREALIGNERS:
-            command = f"{self.read_name()}.DEQU.GTDT[4]"
-            ip = self.send_and_read(command)
-            return ip
-        else:
-            return None
-
-    def set_host_IP(self,ip):
-        command = f"{self.read_name()}.DEQU.STDT[1]={ip}"
-        self.send_and_read(command)
-        self.write_changes()
-        self.status = f"Host IP set to {ip}."
-    
-    def set_host_port(self,port):
-        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
-            command = f"{self.read_name()}.DEQU.STDT[68]={port}"
-            self.send_and_read(command)
-            self.write_changes()
-        elif self.identifier in PREALIGNERS:
-            command = f"{self.read_name()}.DEQU.STDT[2]={port}"
-            self.send_and_read(command)
-            self.write_changes()
-        else:
-            status = f"Component type {self.identifier} has not been implemented"
-            self.status = status
-            logger.error(status)
-            return
-
-        self.status = f"TCP/IP port set to {port}."
-    
-    # IMPLEMENT ALL OTHER AUTOSETUP METHODS HERE
-        
-    def set_log_host(self,ip):
-        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
-            command = f"{self.read_name()}.DEQU.STDT[69]={ip}"
-            self.send_and_read(command)
-            self.write_changes()
-        elif self.identifier in PREALIGNERS:
-            command = f"{self.read_name()}.DEQU.STDT[4]={ip}"
-            self.send_and_read(command)
-            self.write_changes()
-        else:
-            status = f"Component type {self.identifier} has not been implemented"
-            self.status = status
-            logger.error(status)
-            return
-
-        self.status = f"Log host set to {ip}."
-
-    def GAIO(self):
-        command = f"{self.read_name()}.GAIO"
-        message = self.send_and_read(command)
-        self.status = f"Response logged."
-
-    def SAIO_on(self):
-        command = f"{self.read_name()}.SAIO(00000000000000000000000100000010,00000000000000000000000000000000,0000000000)"
-        message = self.send_and_read(command)
-        logger.debug(message)
-        self.status = f"Automatic status ON. Response logged."
-
-    def SAIO_off(self):
-        command = f"{self.read_name()}.SAIO(00000000000000000000000000000000,00000000000000000000000000000000,0000000000)"
-        message = self.send_and_read(command)
-        logger.debug(message)
-        self.status = f"Automatic status OFF. Response logged."
-    
-    def set_body_no(self,body_no):
-        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, PREALIGNERS]):
-            command = f"{self.read_name()}.DEQU.STDT[6]={body_no}"
-            self.send_and_read(command)
-            self.write_changes()
-        else:
-            status = f"Component type {self.identifier} has not been implemented"
-            self.status = status
-            logger.error(status)
-            return
-        self.status = f"Body no set to {body_no}"
-    
-    def set_laser(self, arm, setting):
-        if arm == 'lower':
-            arm_no = 2
-            if setting == 'on':
-                set_bit = 'D080B'
-            elif setting == 'off':
-                set_bit = 'D081B'
-        elif arm == 'upper':
-            arm_no = 1
-            if setting == 'on':
-                set_bit = 'D100B'
-            elif setting == 'off':
-                set_bit = 'D101B'
-        command = f"{self.read_name()}.ARM{arm_no}.DCMD({set_bit},1)"
-        message = self.send_and_read(command)
-        self.GAIO()
-        self.status = f"{arm} arm laser turned {setting}"
-    
-    def set_loadport_settings(self):
-        """Sets the bits for system data according to checklists (last updated: 2026-02-20)"""
-        if self.identifier == "RV201-F07-000":
-            # Sets bits 18 (Presence LED) 4 (Auto Output) and 3 (I/O)
-            command = f"{self.read_name()}.DEQU.STDT[8]=299129"
-            self.send_and_read(command)
-            self.write_changes()
-            self.status = f"Set basic loadport settings"
-    
-    def set_host_interface(self):
-        command = f"{self.read_name()}.DEQU.STDT[5]=001"
-        self.send_and_read(command)
-        self.write_changes()
-    
-    def no_interpolation(self): #TODO Test this
-        self.busy=True
-        self.status="Applying no interpolation..."
-        case_1 = '"","","","","",00003,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000'
-        case_2 = '"","","","","",00000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000'
-        for idx in range(400):
-            command = f"{self.read_name()}.DCFG.STDT[{idx}]="
-            if idx in [0,10,11,12,13]:
-                command+=case_1
-            else:
-                command+=case_2
-            self.send_and_read(command)
-        self.write_changes()
-        self.busy=False
-    
-    def write_changes(self):
-        self.sock.settimeout(60)
-        self.status = "Writing to flash memory..."
-        acknowledge = self.send_and_read(f"{self.read_name()}.WTDT")
-        logger.debug(f"Writing data to flash memory: {acknowledge}")
-        self.status = "Changes saved to flash memory."
-        self.sock.settimeout(self.TIMEOUT)
-    
     def basic_settings(self):
         """
         Basic settings to change for every component
@@ -429,6 +211,190 @@ class Rorze():
         self.set_host_IP(host_ip)
         self.set_log_host(log_host)
 
+    def change_IP(self, ip):
+        # Implement different component types here
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
+            command = f"{self.read_name()}.STDT[1]={ip}"
+        elif self.identifier in PREALIGNERS:
+            command = f"{self.read_name()}.DEQU.STDT[3]={ip}"
+        else:
+            status = f"Component type {self.identifier} has not been implemented"
+            self.status = status
+            logger.error(status)
+            return
+
+        message = self.send_and_read(command)
+        self.write_changes()
+        self.status = f"IP set to {ip}. Please restart the component. ({message})"
+
+    def GAIO(self):
+        command = f"{self.read_name()}.GAIO"
+        message = self.send_and_read(command)
+        self.status = message
+
+    def get_host_IP(self):
+        command = f"{self.read_name()}.DEQU.GTDT[1]"
+        ip = self.send_and_read(command)
+        return ip
+
+    def get_host_port(self):
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
+            command = f"{self.read_name()}.DEQU.GTDT[68]"
+            port = self.send_and_read(command)
+            return port
+        elif self.identifier in PREALIGNERS:
+            command = f"{self.read_name()}.DEQU.GTDT[2]"
+            port = self.send_and_read(command)
+            return port
+        else:
+            return None
+
+    def get_log_host(self):
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
+            command = f"{self.read_name()}.DEQU.GTDT[69]"
+            ip = self.send_and_read(command)
+            return ip
+        elif self.identifier in PREALIGNERS:
+            command = f"{self.read_name()}.DEQU.GTDT[4]"
+            ip = self.send_and_read(command)
+            return ip
+        else:
+            return None
+
+    def get_rotary_switch_value(self):
+        command = f"{self.read_name()}.GTDT[3]"
+        message = self.send_and_read(command)
+        self.status = f"Rotary switch position: {message}"
+
+    def get_status(self):
+        command = f"{self.read_name()}.STAT"
+        message = self.send_and_read(command)
+        self.status = f"{message}"
+
+    def no_interpolation(self):
+        self.busy=True
+        self.status="Applying no interpolation..."
+        case_1 = '"","","","","",00003,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000'
+        case_2 = '"","","","","",00000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000'
+        for idx in range(400):
+            command = f"{self.read_name()}.DCFG.STDT[{idx}]="
+            if idx in [0,10,11,12,13]:
+                command+=case_1
+            else:
+                command+=case_2
+            self.send_and_read(command)
+        self.write_changes()
+        self.busy=False
+    
+    def origin_search(self, p1: int=0, p2: int=0):
+        command = f"{self.read_name()}.ORGN({p1},{p2})"
+        message = self.send_and_read_motion(command)
+        self.status = f"Origin search completed: {message}"
+
+    def SAIO_on(self):
+        command = f"{self.read_name()}.SAIO(00000000000000000000000100000010,00000000000000000000000000000000,0000000000)"
+        message = self.send_and_read(command)
+        logger.debug(message)
+        self.status = f"Automatic status ON. Response logged."
+
+    def SAIO_off(self):
+        command = f"{self.read_name()}.SAIO(00000000000000000000000000000000,00000000000000000000000000000000,0000000000)"
+        message = self.send_and_read(command)
+        logger.debug(message)
+        self.status = f"Automatic status OFF. Response logged."
+    
+    def set_body_no(self,body_no):
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, PREALIGNERS]):
+            command = f"{self.read_name()}.DEQU.STDT[6]={body_no}"
+            self.send_and_read(command)
+            self.write_changes()
+        else:
+            status = f"Component type {self.identifier} has not been implemented"
+            self.status = status
+            logger.error(status)
+            return
+        self.status = f"Body no set to {body_no}"
+    
+    def set_host_interface(self):
+        command = f"{self.read_name()}.DEQU.STDT[5]=001"
+        self.send_and_read(command)
+        self.write_changes()
+    
+    def set_host_IP(self,ip):
+        command = f"{self.read_name()}.DEQU.STDT[1]={ip}"
+        self.send_and_read(command)
+        self.write_changes()
+        self.status = f"Host IP set to {ip}."
+    
+    def set_host_port(self,port):
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
+            command = f"{self.read_name()}.DEQU.STDT[68]={port}"
+            self.send_and_read(command)
+            self.write_changes()
+        elif self.identifier in PREALIGNERS:
+            command = f"{self.read_name()}.DEQU.STDT[2]={port}"
+            self.send_and_read(command)
+            self.write_changes()
+        else:
+            status = f"Component type {self.identifier} has not been implemented"
+            self.status = status
+            logger.error(status)
+            return
+
+        self.status = f"TCP/IP port set to {port}."
+    
+    def set_laser(self, arm, setting):
+        if arm == 'lower':
+            arm_no = 2
+            if setting == 'on':
+                set_bit = 'D080B'
+            elif setting == 'off':
+                set_bit = 'D081B'
+        elif arm == 'upper':
+            arm_no = 1
+            if setting == 'on':
+                set_bit = 'D100B'
+            elif setting == 'off':
+                set_bit = 'D101B'
+        command = f"{self.read_name()}.ARM{arm_no}.DCMD({set_bit},1)"
+        message = self.send_and_read(command)
+        self.GAIO()
+        self.status = f"{arm} arm laser turned {setting}"
+    
+    def set_loadport_settings(self):
+        """Sets the bits for system data according to checklists (last updated: 2026-02-20)"""
+        if self.identifier == "RV201-F07-000":
+            # Sets bits 18 (Presence LED) 4 (Auto Output) and 3 (I/O)
+            command = f"{self.read_name()}.DEQU.STDT[8]=299129"
+            self.send_and_read(command)
+            self.write_changes()
+            self.status = f"Set basic loadport settings"
+    
+    def set_log_host(self,ip):
+        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
+            command = f"{self.read_name()}.DEQU.STDT[69]={ip}"
+            self.send_and_read(command)
+            self.write_changes()
+        elif self.identifier in PREALIGNERS:
+            command = f"{self.read_name()}.DEQU.STDT[4]={ip}"
+            self.send_and_read(command)
+            self.write_changes()
+        else:
+            status = f"Component type {self.identifier} has not been implemented"
+            self.status = status
+            logger.error(status)
+            return
+
+        self.status = f"Log host set to {ip}."
+
+    def write_changes(self):
+        self.sock.settimeout(60)
+        self.status = "Writing to flash memory..."
+        acknowledge = self.send_and_read(f"{self.read_name()}.WTDT")
+        logger.debug(f"Writing data to flash memory: {acknowledge}")
+        self.status = "Changes saved to flash memory."
+        self.sock.settimeout(self.TIMEOUT)
+    
     def read_data(self):
         """
         This serves the same purpose as the 'Read Data' button in the
@@ -500,6 +466,90 @@ class Rorze():
                     # Write to file
                     print(f"{block_name}.{set_command}[{idx}]={block}", file=file)
 
+        def read_data_lineartrack(self,filename):
+            with open(f"{filename}", "x") as backup:
+                read_block(self,"DEQU", 1, "STDT", backup)
+                read_block(self,"DRES", 1, "STDT", backup)
+                read_block(self,"DRCI", 1, "STDT[0]", backup, add_brackets=True) # Lineartrack needs extra [0]
+                read_block(self,"DRCS", 1, "STDT[0]", backup, add_brackets=True)
+                read_block(self,"DRCH", 1, "STDT[0]", backup, add_brackets=True)
+                read_block(self,"DMNT", 1, "STDT[0]", backup, add_brackets=True)
+                read_block(self,"XAX1", [0,1,2,8,9,10,11,12,13,14,15,16,17,18,19,40], "STDT", backup)
+                read_block(self,"XAX1", 1, "SPRM", backup)
+                read_block(self,"XAX1", 16, "SEPM", backup)
+                read_block(self,"DTBL", 400, "STDA", backup)
+
+        def read_data_loadport(self,filename):
+            with open(f"{filename}", "x") as backup:
+                read_ip_prefix(self, backup)
+                read_block(self, "DEQU", 1, "STDT", backup)
+                read_block(self, "DRES", 1, "STDT", backup)
+                read_block(self, "DRCI", 2, "STDT", backup)
+                read_block(self, "DRCS", 2, "STDT", backup)
+                read_block(self, "DMNT", 2, "STDT", backup)
+                read_block(self, "YAX1", 4, "STDT", backup)
+                read_block(self, "YAX1", 1, "SPRM", backup)
+                read_block(self, "ZAX1", 4, "STDT", backup)
+                read_block(self, "ZAX1", 1, "SPRM", backup)
+                read_block(self, "DSTG", 1, "STDT", backup)
+                read_block(self, "DMPR", 1, "STDT", backup)
+                read_block(self, "DPRM", 64, "STDT", backup)
+                read_block(self, "DCST", 1, "STDT", backup)
+                read_block(self, "DE84", 1, "STDT", backup)
+        
+        def read_data_prealigner(self, filename):
+            with open(f"{filename}", "x") as backup:
+
+                if self.identifier == "RA320_002":
+                    read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DEQU", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DRCS", 4, "STDT", backup, add_leading=True)
+                    read_block(self,"DMNT", 4, "STDT", backup, add_leading=True)
+                    for i in range(5):
+                        read_block(self, "DSDB", 3, f"STDT[{i:03}]", backup, add_leading=True)
+                    read_block(self, "DTMP", 1, "STDT", backup, add_leading=True)
+                    read_block(self, "DALN", 10, "STDT", backup, add_leading=True)
+                    read_block(self, "DROT", 100, "STDT", backup, add_leading=True)
+                    read_block(self, "DPRS", 1, "STDT", backup, add_leading=True)
+                    read_block(self, "DSEN", 10, "STDT", backup, add_leading=True)
+                    read_block(self, "DRCP", 10, "STDT", backup, add_leading=True)
+
+                elif self.identifier == "RA320_003":
+                    read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DEQU", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DRCS", 4, "STDT", backup, add_leading=True)
+                    read_block(self,"DMNT", 4, "STDT", backup, add_leading=True)
+                    for i in range(5):
+                        read_block(self, "DSDB", 3, f"STDT[{i:03}]", backup, add_leading=True)
+                    read_block(self, "DTMP", 1, "STDT", backup, add_leading=True)
+                    read_block(self, "DCAM", 4, "STDT", backup, add_leading=True)
+                    read_block(self, "DALN", 10, "STDT", backup, add_leading=True)
+                    read_block(self, "DROT", 100, "STDT", backup, add_leading=True)
+                    read_block(self, "DSEN", 10, "STDT", backup, add_leading=True)
+                    read_block(self, "DRCP", 10, "STDT", backup, add_leading=True)
+
+                elif self.identifier == "RA420_001":
+                    read_block(self,"DEQU", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DRCS", 4, "STDT", backup, add_leading=True)
+                    read_block(self,"DSAX", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DSAY", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DSAZ", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DSAR", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DMNT", 4, "STDT", backup, add_leading=True)
+                    read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
+                    for i in range(5):
+                        read_block(self,"DSDB", 3, f"STDT[{i:03}]", backup, add_leading=True)
+                    read_block(self,"DTMP", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DCAM", 4, "STDT", backup, add_leading=True)
+                    read_block(self,"DAWS", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DALN", 8, "STDT", backup, add_leading=True)
+                    read_block(self,"DROT", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DPRS", 1, "STDT", backup, add_leading=True)
+                    read_block(self,"DSEN", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DRCP", 10, "STDT", backup, add_leading=True)
+                    read_block(self,"DITK", 64, "STDT", backup, add_leading=True)
+                    read_block(self,"DOUT", 64, "STDT", backup, add_leading=True)
+
         def read_data_robot(self, filename):
             """
             Robot backup depends whether the robot has a linear track,
@@ -558,90 +608,6 @@ class Rorze():
                 # If Framed arm is present, read DALN
                 if any(arm == "25" for arm in [arm1, arm2]):
                     read_block(self,"DALN", 32, "STDT", backup)
-
-        def read_data_prealigner(self, filename):
-            with open(f"{filename}", "x") as backup:
-
-                if self.identifier == "RA320_002":
-                    read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
-                    read_block(self,"DEQU", 1, "STDT", backup, add_leading=True)
-                    read_block(self,"DRCS", 4, "STDT", backup, add_leading=True)
-                    read_block(self,"DMNT", 4, "STDT", backup, add_leading=True)
-                    for i in range(5):
-                        read_block(self, "DSDB", 3, f"STDT[{i:03}]", backup, add_leading=True)
-                    read_block(self, "DTMP", 1, "STDT", backup, add_leading=True)
-                    read_block(self, "DALN", 10, "STDT", backup, add_leading=True)
-                    read_block(self, "DROT", 100, "STDT", backup, add_leading=True)
-                    read_block(self, "DPRS", 1, "STDT", backup, add_leading=True)
-                    read_block(self, "DSEN", 10, "STDT", backup, add_leading=True)
-                    read_block(self, "DRCP", 10, "STDT", backup, add_leading=True)
-
-                elif self.identifier == "RA320_003": #TODO Test this
-                    read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
-                    read_block(self,"DEQU", 1, "STDT", backup, add_leading=True)
-                    read_block(self,"DRCS", 4, "STDT", backup, add_leading=True)
-                    read_block(self,"DMNT", 4, "STDT", backup, add_leading=True)
-                    for i in range(5):
-                        read_block(self, "DSDB", 3, f"STDT[{i:03}]", backup, add_leading=True)
-                    read_block(self, "DTMP", 1, "STDT", backup, add_leading=True)
-                    read_block(self, "DCAM", 4, "STDT", backup, add_leading=True)
-                    read_block(self, "DALN", 10, "STDT", backup, add_leading=True)
-                    read_block(self, "DROT", 100, "STDT", backup, add_leading=True)
-                    read_block(self, "DSEN", 10, "STDT", backup, add_leading=True)
-                    read_block(self, "DRCP", 10, "STDT", backup, add_leading=True)
-
-                elif self.identifier == "RA420_001": #TODO Test this
-                    read_block(self,"DEQU", 1, "STDT", backup, add_leading=True)
-                    read_block(self,"DRCS", 4, "STDT", backup, add_leading=True)
-                    read_block(self,"DSAX", 10, "STDT", backup, add_leading=True)
-                    read_block(self,"DSAY", 10, "STDT", backup, add_leading=True)
-                    read_block(self,"DSAZ", 10, "STDT", backup, add_leading=True)
-                    read_block(self,"DSAR", 10, "STDT", backup, add_leading=True)
-                    read_block(self,"DMNT", 4, "STDT", backup, add_leading=True)
-                    read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
-                    for i in range(5):
-                        read_block(self,"DSDB", 3, f"STDT[{i:03}]", backup, add_leading=True)
-                    read_block(self,"DTMP", 1, "STDT", backup, add_leading=True)
-                    read_block(self,"DCAM", 4, "STDT", backup, add_leading=True)
-                    read_block(self,"DAWS", 1, "STDT", backup, add_leading=True)
-                    read_block(self,"DALN", 8, "STDT", backup, add_leading=True)
-                    read_block(self,"DROT", 10, "STDT", backup, add_leading=True)
-                    read_block(self,"DPRS", 1, "STDT", backup, add_leading=True)
-                    read_block(self,"DSEN", 10, "STDT", backup, add_leading=True)
-                    read_block(self,"DRCP", 10, "STDT", backup, add_leading=True)
-                    read_block(self,"DITK", 64, "STDT", backup, add_leading=True)
-                    read_block(self,"DOUT", 64, "STDT", backup, add_leading=True)
-
-        def read_data_loadport(self,filename):
-            with open(f"{filename}", "x") as backup:
-                read_ip_prefix(self, backup)
-                read_block(self, "DEQU", 1, "STDT", backup)
-                read_block(self, "DRES", 1, "STDT", backup)
-                read_block(self, "DRCI", 2, "STDT", backup)
-                read_block(self, "DRCS", 2, "STDT", backup)
-                read_block(self, "DMNT", 2, "STDT", backup)
-                read_block(self, "YAX1", 4, "STDT", backup)
-                read_block(self, "YAX1", 1, "SPRM", backup)
-                read_block(self, "ZAX1", 4, "STDT", backup)
-                read_block(self, "ZAX1", 1, "SPRM", backup)
-                read_block(self, "DSTG", 1, "STDT", backup)
-                read_block(self, "DMPR", 1, "STDT", backup)
-                read_block(self, "DPRM", 64, "STDT", backup)
-                read_block(self, "DCST", 1, "STDT", backup)
-                read_block(self, "DE84", 1, "STDT", backup)
-        
-        def read_data_lineartrack(self,filename): #TODO Test this
-            with open(f"{filename}", "x") as backup:
-                read_block(self,"DEQU", 1, "STDT", backup)
-                read_block(self,"DRES", 1, "STDT", backup)
-                read_block(self,"DRCI", 1, "STDT[0]", backup, add_brackets=True) # Lineartrack needs extra [0]
-                read_block(self,"DRCS", 1, "STDT[0]", backup, add_brackets=True)
-                read_block(self,"DRCH", 1, "STDT[0]", backup, add_brackets=True)
-                read_block(self,"DMNT", 1, "STDT[0]", backup, add_brackets=True)
-                read_block(self,"XAX1", [0,1,2,8,9,10,11,12,13,14,15,16,17,18,19,40], "STDT", backup)
-                read_block(self,"XAX1", 1, "SPRM", backup)
-                read_block(self,"XAX1", 16, "SEPM", backup)
-                read_block(self,"DTBL", 400, "STDA", backup)
 
         # Timestamp
         ts = datetime.now().strftime("%Y%m%d")
