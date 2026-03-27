@@ -2,12 +2,16 @@ class AutosetupMenuError(Exception):
     """Base class for component menu exceptions"""
     pass
 
+class DoubleConfiguration(AutosetupMenuError):
+    """Raise when there are both WMC and SemDex Components found"""
+    pass
+
 class MultipleUnconfiguredLoadports(AutosetupMenuError):
     """Raise, when there are multiple unconfigured loadports found"""
     pass
 
-class DoubleConfiguration(AutosetupMenuError):
-    """Raise when there are both WMC and SemDex Components found"""
+class NoBackup(AutosetupMenuError):
+    """Raise, when the backup file could not be created"""
     pass
 
 class NoSystem(AutosetupMenuError):

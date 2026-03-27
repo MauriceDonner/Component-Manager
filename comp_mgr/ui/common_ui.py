@@ -227,3 +227,36 @@ class PopupInput:
         else:
             logger.debug(f"value received: {new_val}")
             return new_val
+
+class ScrollingLog:
+    def __init__(self, stdscr, max_lines=1000):
+        self.buffer = []
+        self.max_lines = max_lines
+        self.stdscr = stdscr
+
+    def add(self, line: str, start_y=1, start_x=1, height=None, width=None):
+        """Add a new line to the log"""
+        self.buffer.append(line)
+
+        # Prevent unlimited growth
+        if len(self.buffer) > self.max_lines:
+            self.buffer.pop(0)
+
+        """Draw visible portion of log to screen"""
+        if height is None or width is None:
+            h, w = self.stdscr.getmaxyx()
+            height = h - start_y
+            width = w - start_x
+        
+        self.stdscr.clear()
+
+        # Only display last visible lines
+        visible_lines = self.buffer[-height:]
+
+        for i, line in enumerate(visible_lines):
+            try:
+                self.stdscr.addstr(start_y + i, start_x, line[:width])
+            except curses.error:
+                pass  # Prevent crash on edge cases
+        
+        self.stdscr.refresh()

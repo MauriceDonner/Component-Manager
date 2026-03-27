@@ -106,7 +106,7 @@ CONFIG_MENU_OPTIONS = {
     ],
     'RR754': [
         { 'label': 'No interpolation', 'type': 'checkbox', 'key': 'No_Interpolation', 'enabled': True},
-        { 'label': 'Init flip axis', 'type': 'checkbox', 'key': 'Init_Rotate', 'enabled': True},
+        { 'label': 'Flip near', 'type': 'checkbox', 'key': 'Flip_Near', 'enabled': True},
     ],
     'RA420_001': [],
     'RTS13': [],

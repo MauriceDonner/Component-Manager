@@ -184,6 +184,27 @@ class ComponentMenu:
                 logger.error(f"ValueError in ip address. Expected 4 octets in {ip}")
                 self.set_status(f"IP address parsing error. Expected 4 octets in {ip}")
         return _action
+
+    def set_speed_popup(self, stdscr):
+        def _action(component):
+            # Read speed from component
+            name = component.read_name()
+            command = f"{name}.DRCS[003].GTDT[11]"
+            current_speed_value = component.send_and_read(command)
+            if int(current_speed_value) == 120000:
+                current_speed = "Fast"
+            elif int(current_speed_value) == 30000:
+                current_speed = "Slow"
+            else:
+                current_speed = current_speed_value
+            options = {
+                'Fast': {"label": "Fast", "type": "selection", "key": "Fast"},
+                'Slow': {"label": "Slow", "type": "selection", "key": "Slow"}
+            }
+            popup = PopupMenu(stdscr, f"Set aligner speed (current speed setting: {current_speed})", options)
+            setting = popup.run()
+            component.set_alignment_speed(speed=setting)
+        return _action
     
     def run(self, stdscr):
         name = self.comp_info["Name"]

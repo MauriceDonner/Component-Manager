@@ -2,12 +2,13 @@ import copy
 import curses
 import ipaddress
 import logging
+import os
 import sys
 import time
 from comp_mgr.comp import Rorze
 from comp_mgr.config import NETWORK, CONFIG_MENU_OPTIONS
-from comp_mgr.exceptions import MultipleUnconfiguredLoadports, DoubleConfiguration
-from comp_mgr.ui.common_ui import PopupMenu, draw_status_popup
+from comp_mgr.exceptions import *
+from comp_mgr.ui.common_ui import PopupMenu, draw_status_popup, ScrollingLog
 
 logger = logging.getLogger(__name__)
 
@@ -46,21 +47,21 @@ class AutosetupMenu:
                 stdscr.addstr(i + 2, 4, row)
             
         # For debugging, show the entire dict and system config
-        offset = self.ncomponents + len(self.menu_items) + 4
-        stdscr.addstr(offset, 4, f"Config: {self.system}")
-        for i, component in self.all_components.items():
-            config_items = []
-            display_name = f'{component['Type']}: '
-            for item, cfg in component['Config_List'].items():
-                enabled = cfg.get("enabled", False)
-                string = f'{item} = {enabled} '
-                if 'value' in cfg.keys():
-                    string += f' {cfg['value']}'
-                config_items.append(string)
+        # offset = self.ncomponents + len(self.menu_items) + 4
+        # stdscr.addstr(offset, 4, f"Config: {self.system}")
+        # for i, component in self.all_components.items():
+        #     config_items = []
+        #     display_name = f'{component['Type']}: '
+        #     for item, cfg in component['Config_List'].items():
+        #         enabled = cfg.get("enabled", False)
+        #         string = f'{item} = {enabled} '
+        #         if 'value' in cfg.keys():
+        #             string += f' {cfg['value']}'
+        #         config_items.append(string)
             
-            display_config = " | ".join(config_items)
-            display_full = display_name+display_config
-            stdscr.addstr(offset + 1 + i, 4, display_full[:curses.COLS - 8])
+        #     display_config = " | ".join(config_items)
+        #     display_full = display_name+display_config
+        #     stdscr.addstr(offset + 1 + i, 4, display_full[:curses.COLS - 8])
 
         draw_status_popup(stdscr, self.status_message, self.status_until)
         stdscr.refresh()
@@ -88,6 +89,7 @@ class AutosetupMenu:
                 selected = self.button_list[current_row]
                 if selected == '- Start Autosetup':
                     self.autosetup(stdscr)
+                    break
                 elif selected == '- Change system':
                     self.choose_system(stdscr)
                 elif selected == '- Back':
@@ -113,8 +115,10 @@ class AutosetupMenu:
             target_ip = NETWORK[self.system][component["Type"]]
             if component['IP'] == target_ip:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = False
+                logger.debug(f"Skipping Target IP for {component["SN"]}")
             else:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = True
+                logger.debug(f"Setting Target IP for {component["SN"]}")
 
     def configure_component(self, stdscr, current_row):
         """
@@ -129,27 +133,30 @@ class AutosetupMenu:
 
     def get_button(self, index) -> str:
         component = self.all_components[index]
+        config_list = component['Config_List']
 
         ip = component["IP"]
         type = component["Type"]
 
-        checkbox = f"[{'X' if component['Config_List']['Configure']['enabled'] == True else ' '}]"
+        checkbox = f"[{'X' if config_list['Configure']['enabled'] == True else ' '}]"
         display = [f'{checkbox} {type} [']
 
-        if component["Config_List"]["Target_IP"]['enabled']:
-            target_ip = component["Config_List"]["Target_IP"]["value"]
+        if config_list["Target_IP"]['enabled']:
+            target_ip = config_list["Target_IP"]["value"]
         else:
             target_ip = NETWORK[self.system][component["Type"]]
 
         # If an update is enabled, include it to the information page
-        if component['Config_List']['Configure']['enabled']:
+        if config_list['Configure']['enabled']:
             if ip != target_ip:
                 display.append(f"{ip} -> {target_ip}")
-            for config_item in component["Config_List"]:
+            for config_item in config_list:
                 if config_item == 'Configure': continue
-                if component["Config_List"][config_item]['enabled']:
-                    display_text = component["Config_List"][config_item]['label']
-                    display.append(display_text) #TODO write Config_list into all_components
+                if config_list[config_item]['enabled']:
+                    # Omit Change IP label, since that one is obvious by design
+                    if not config_list[config_item]['label'] == "Change IP":
+                        display_text = config_list[config_item]['label']
+                        display.append(display_text)
         else: 
             display.append(f"Do not configure")
                 
@@ -204,7 +211,7 @@ class AutosetupMenu:
                 )
 
         if unconfigured:
-            logger.debug(f"{configured}")
+            logger.debug(f"Configured Loadports: {configured}")
             free_body = next(
                 (i+1 for i, is_configured in enumerate(configured) if not is_configured),1
                 )
@@ -228,7 +235,6 @@ class AutosetupMenu:
         for i, ip in enumerate(all_components.keys()):
             # Check, whether a component is in the list of known components
             if all_components[ip]['Identifier'] in CONFIG_MENU_OPTIONS:
-                # Assign an index for each recognized component
                 self.all_components[i] = all_components[ip]
                 # Set up a configuration list for each component
                 type = self.all_components[i]['Identifier']
@@ -255,45 +261,94 @@ class AutosetupMenu:
             target_ip = NETWORK[self.system][component["Type"]]
             if component['IP'] != target_ip:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = True
+                self.all_components[i]['Config_List']['Target_IP']['enabled'] = True
             else:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = False
     
-    def autosetup(self):
+    def autosetup(self, stdscr):
         """
         Define here, which actions are taken when a Config_List entry is read.
         """
+        # Start the log screen
+        log = ScrollingLog(stdscr)
+        log.add(f"Starting Autosetup...")
+
         for i, entry in self.all_components.items():
+
             
-            # Connect to component
-            component = Rorze(entry)
+            # Check, if component should be configured
+            if not entry['Config_List']['Configure']['enabled']: continue
 
-            # Save original component backup
-            component.read_data()
 
-            #TODO Check, that the file is actually there and non-empty
+            # TODO Connect to component
+            # component = Rorze(entry)
 
-            # If config enabled -> Configure component
-            if not entry['Configure']: continue
+            # TODO temporary parsing - change to component.ip later
+            ip = entry["IP"]
+            identifier = entry["Identifier"]
+            sn = entry["SN"]
 
+            # TODO Save original component backup
+            # component.read_data()
+            files = os.listdir()
+            if not any(f'{sn}' in f for f in files):
+                logger.error(f"Error during autosetup - No backup file was created for {sn}")
+                logger.debug(f"Directory files: {files}")
+                raise NoBackup("No backup file was created")
+
+            # Start going through the possible config actions
+            log.add(f"########## Processing {entry["Identifier"]} {entry["SN"]} ##########")
             for config_item, config in entry['Config_List'].items():
+                
                 if config['enabled']:
                     if config_item == "Target_IP":
-                        ip = config["value"]
-                        iptest = ipaddress.IPv4Address(ip)
-                        component.change_IP(ip)
+                        new_ip = config["value"]
+                        if ip != new_ip:
+                            infostring = f"Changing IP of {identifier} from {ip} to {new_ip}" 
+                            # component.change_IP(ip,write=0)
+                            logger.info(infostring)
+                            log.add(infostring)
                     elif config_item == "Basic_Settings":
-                        component.basic_settings()
+                        infostring = "Applying basic settings..."
+                        # component.basic_settings(write=0)
+                        logger.info(infostring)
+                        log.add(infostring)
                     elif config_item == "Spindle_Fix":
-                        component.spindle_fix() #TODO
+                        infostring = f"Removing Aligner Spindle offset..."
+                        #component.spindle_fix(write=0)
+                        logger.info(infostring)
+                        log.add(infostring)
                     elif config_item == "Slow_Mode":
-                        component.slow_mode(True) #TODO
+                        infostring = "Setting aligner spindle speed to slow..."
+                        #component.set_alignment_speed(speed="Slow",write=0)
+                        logger.info(infostring)
+                        log.add(infostring)
                     elif config_item == "No_Interpolation":
-                        component.no_interpolation()
-                    elif config_item == "Init_Rotate":
-                        component.init_rotate() #TODO
+                        infostring = "Disabling Interpolation..."
+                        #component.no_interpolation(write=0)
+                        logger.info(infostring)
+                        log.add(infostring)
+                    elif config_item == "Flip_Near":
+                        infostring = "Enabling flipping option of retracted arm..."
+                        #component.set_flip_near(True,write=0)
+                        logger.info(infostring)
+                        log.add(infostring)
                     elif config_item == "Set_Body_Number":
                         body_no = config["value"]
-                        component.set_body_number(body_no)
+                        #component.set_body_no(body_no,write=0)
+                        infostring = f"Setting body number of {identifier} to {body_no}..."
+                        logger.info(infostring)
+                        log.add(infostring)
+                    
+            log.add("Writing changes to flash memory...")
+            # component.write_changes()
 
-            # Save altered component backup
-            component.read_data()
+            log.add("Saving component backup...")
+            # TODO Save altered component backup
+            # component.read_data()
+
+            logger.info(f"#################### Autosetup complete for {identifier} ####################")
+
+        log.add("Autosetup done. Press any key to return...")
+        stdscr.timeout(-1)
+        stdscr.getch()

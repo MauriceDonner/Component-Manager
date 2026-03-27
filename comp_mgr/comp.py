@@ -211,7 +211,7 @@ class Rorze():
         self.set_host_IP(host_ip)
         self.set_log_host(log_host)
 
-    def change_IP(self, ip):
+    def change_IP(self, ip, write=1):
         # Implement different component types here
         if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
             command = f"{self.read_name()}.STDT[1]={ip}"
@@ -224,7 +224,7 @@ class Rorze():
             return
 
         message = self.send_and_read(command)
-        self.write_changes()
+        if write: self.write_changes()
         self.status = f"IP set to {ip}. Please restart the component. ({message})"
 
     def GAIO(self):
@@ -271,7 +271,7 @@ class Rorze():
         message = self.send_and_read(command)
         self.status = f"{message}"
 
-    def no_interpolation(self):
+    def no_interpolation(self, write=1):
         self.busy=True
         self.status="Applying no interpolation..."
         case_1 = '"","","","","",00003,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000,+0000000000'
@@ -283,7 +283,7 @@ class Rorze():
             else:
                 command+=case_2
             self.send_and_read(command)
-        self.write_changes()
+        if write: self.write_changes()
         self.busy=False
     
     def origin_search(self, p1: int=0, p2: int=0):
@@ -302,39 +302,70 @@ class Rorze():
         message = self.send_and_read(command)
         logger.debug(message)
         self.status = f"Automatic status OFF. Response logged."
+
+    def set_alignment_speed(self, speed, write=1):
+        if speed == "Slow":
+            alignment_acceleration = 100000
+            alignment_speed = 30000
+        elif speed == "Fast":
+            alignment_acceleration = 450000
+            alignment_speed = 120000
+
+        # Set acceleration for alignment operation
+        command = f"{self.read_name()}.DRCS[003].STDT[10]={alignment_acceleration}"
+        self.send_and_read(command)
+        # Set speed for alignment operation
+        command = f"{self.read_name()}.DRCS[003].STDT[11]={alignment_speed}"
+        self.send_and_read(command)
+        # Set deceleration for alignment operation
+        command = f"{self.read_name()}.DRCS[003].STDT[12]={alignment_acceleration}"
+        self.send_and_read(command)
+        logger.info(f"Setting aligner speed to {alignment_speed} and acceleration to {alignment_acceleration}")
+        if write: self.write_changes()
     
-    def set_body_no(self,body_no):
+    def set_body_no(self, body_no, write=1):
         if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, PREALIGNERS]):
             command = f"{self.read_name()}.DEQU.STDT[6]={body_no}"
             self.send_and_read(command)
-            self.write_changes()
+            if write: self.write_changes()
         else:
             status = f"Component type {self.identifier} has not been implemented"
             self.status = status
             logger.error(status)
             return
         self.status = f"Body no set to {body_no}"
+
+    def set_flip_near(self, setting, write=1):
+        software_switch = self.send_and_read(f"{self.read_name}.DEQU.GTDT[8]")
+        # Flip the 28th bit, which corresponds to the 'flip finger near' setting
+        if setting:
+            software_switch ^= (1 << 28)
+        else:
+            software_switch ^= (0 << 28)
+        self.send_and_read(f"{self.read_name}.DEQU.STDT[8]={software_switch}")
+        logger.info(f"Setting robot software switch to {software_switch}")
+        if write: self.write_changes()
     
-    def set_host_interface(self):
+    def set_host_interface(self, write=1):
         command = f"{self.read_name()}.DEQU.STDT[5]=001"
         self.send_and_read(command)
-        self.write_changes()
+        if write: self.write_changes()
     
-    def set_host_IP(self,ip):
+    def set_host_IP(self, ip, write=1):
         command = f"{self.read_name()}.DEQU.STDT[1]={ip}"
         self.send_and_read(command)
-        self.write_changes()
+        if write: self.write_changes()
         self.status = f"Host IP set to {ip}."
     
-    def set_host_port(self,port):
+    def set_host_port(self, port, write=1):
         if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
             command = f"{self.read_name()}.DEQU.STDT[68]={port}"
             self.send_and_read(command)
-            self.write_changes()
+            if write: self.write_changes()
         elif self.identifier in PREALIGNERS:
             command = f"{self.read_name()}.DEQU.STDT[2]={port}"
             self.send_and_read(command)
-            self.write_changes()
+            if write: self.write_changes()
         else:
             status = f"Component type {self.identifier} has not been implemented"
             self.status = status
@@ -361,24 +392,24 @@ class Rorze():
         self.GAIO()
         self.status = f"{arm} arm laser turned {setting}"
     
-    def set_loadport_settings(self):
+    def set_loadport_settings(self, write=1):
         """Sets the bits for system data according to checklists (last updated: 2026-02-20)"""
         if self.identifier == "RV201-F07-000":
             # Sets bits 18 (Presence LED) 4 (Auto Output) and 3 (I/O)
             command = f"{self.read_name()}.DEQU.STDT[8]=299129"
             self.send_and_read(command)
-            self.write_changes()
+            if write: self.write_changes()
             self.status = f"Set basic loadport settings"
     
-    def set_log_host(self,ip):
+    def set_log_host(self, ip, write=1):
         if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
             command = f"{self.read_name()}.DEQU.STDT[69]={ip}"
             self.send_and_read(command)
-            self.write_changes()
+            if write: self.write_changes()
         elif self.identifier in PREALIGNERS:
             command = f"{self.read_name()}.DEQU.STDT[4]={ip}"
             self.send_and_read(command)
-            self.write_changes()
+            if write: self.write_changes()
         else:
             status = f"Component type {self.identifier} has not been implemented"
             self.status = status
@@ -386,6 +417,13 @@ class Rorze():
             return
 
         self.status = f"Log host set to {ip}."
+    
+    def spindle_fix(self, write=1):
+        command = f"{self.read_name()}.DALN[0].STDT[37]=100"
+        self.send_and_read(command)
+        command = f"{self.read_name()}.DALN[0].STDT[38]=100"
+        self.send_and_read(command)
+        if write: self.write_changes()
 
     def write_changes(self):
         self.sock.settimeout(60)
