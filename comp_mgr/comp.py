@@ -98,8 +98,7 @@ class Rorze():
         return data.decode('utf-8').strip()
 
     def send_and_read(self, command: str, buffer: int=1024) -> str:
-        # Add a \r at the end of a command!
-        command = f"{command}\r"
+        command = f"{command}\r" # \r required to send
 
         with self.lock:
             self.busy = True
@@ -109,17 +108,6 @@ class Rorze():
                 read = self.recv_until_newline()
                 logger.debug(f"Receive: {read}")
                 message = read
-                # try:
-                #     # Simulation always treats it like motion command
-                #     self.sock.settimeout(self.MOTION_TIMEOUT)
-                #     self.status = "Waiting for motion..."
-                #     if "SIMULATION" in self.type:
-                #         read = self.sock.recv(1024)
-                #         logger.debug(f"Receive: {read}")
-                #         message = read 
-                # except socket.timeout:
-                #     logger.error("Motion timed out.")
-                # self.sock.settimeout(self.TIMEOUT)
             except socket.error as e:
                 self.status = f"Socket error: {e}"
                 logger.error(f"Socket error: {e}")
@@ -128,33 +116,34 @@ class Rorze():
         
         return message
 
-    def send_and_read_motion(self,command,buffer=1024):
+    # Motion commands - not planned yet
+    # def send_and_read_motion(self,command,buffer=1024):
         
-        with self.lock: # TODO THIS SHOULD NOT BLOCKING -- EMO NEEDS TO BE POSSIBLE
-            self.busy = True
-            logger.debug(f"Sending: {command}")
-            self.sock.sendall(command.encode('utf-8'))
-            try: 
-                read = self.recv_until_newline()
-                message = read #.split('.')[1]
-                self.status = "Component is in motion..."
-                logger.debug(f"Component is in motion... {message}")
-                self.sock.settimeout(self.MOTION_TIMEOUT)
-                read = self.recv_until_newline()
-                message = read #.split('.')[1]
-            except socket.timeout:
-                self.status = "ERROR: Motion timeout"
-                logger.error(f"Motion timeout")
-            except socket.error as e:
-                self.status = f"Socket error: {e}"
-                logger.error(f"Socket error: {e}")
-            finally:
-                self.busy = False
+    #     with self.lock: # THIS SHOULD NOT BLOCKING -- EMO NEEDS TO BE POSSIBLE
+    #         self.busy = True
+    #         logger.debug(f"Sending: {command}")
+    #         self.sock.sendall(command.encode('utf-8'))
+    #         try: 
+    #             read = self.recv_until_newline()
+    #             message = read #.split('.')[1]
+    #             self.status = "Component is in motion..."
+    #             logger.debug(f"Component is in motion... {message}")
+    #             self.sock.settimeout(self.MOTION_TIMEOUT)
+    #             read = self.recv_until_newline()
+    #             message = read #.split('.')[1]
+    #         except socket.timeout:
+    #             self.status = "ERROR: Motion timeout"
+    #             logger.error(f"Motion timeout")
+    #         except socket.error as e:
+    #             self.status = f"Socket error: {e}"
+    #             logger.error(f"Socket error: {e}")
+    #         finally:
+    #             self.busy = False
             
-            self.status = f"Motion completed {message}"
-            logger.info(f"Motion completed {message}")
+    #         self.status = f"Motion completed {message}"
+    #         logger.info(f"Motion completed {message}")
 
-        return message
+    #     return message
     
     def read_name(self):
         """
@@ -162,10 +151,7 @@ class Rorze():
         This prefix has to have a character removed, such that commands can be sent.
         Example: extended_type="eTRB0" -> type="TRB0"
         """
-        if self.name == "SIM1":
-            name = "SIMULATIONeTRB0"
-        else:
-            name = "o"+self.name[-4:]
+        name = "o"+self.name[-4:]
         return name
 
     # ========== Define commands here ==========

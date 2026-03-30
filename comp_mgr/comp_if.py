@@ -115,13 +115,6 @@ class CompIF:
             logger.debug(f"Received component info: {comp_info}")
             return comp_info
 
-        if comp_info["Type"] == "Simulation":
-            comp_info["Name"] = 'SIM1'
-            comp_info["SN"] = 'SIM1234'
-            comp_info["Identifier"] = 'SIM_COMPONENT'
-            comp_info["Firmware"] = '1.19U'
-            return comp_info
-
         # If its a component, find out which type
         logger.info(f"Connecting to {ip}...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

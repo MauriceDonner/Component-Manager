@@ -36,7 +36,7 @@ The type of components and their configurations can be found in the list below:
     - [x] Backup original settings
     - [x] Change IP address
     - [x] Set body no.
-    - [ ] Set basic settings (which are always the same within a system):
+    - [x] Set basic settings (which are always the same within a system):
         - Auto output
         - TCP/IP
         - Host IP adr.
@@ -44,8 +44,6 @@ The type of components and their configurations can be found in the list below:
         - Presence led
         - i/o
     - [x] Backup new settings
-    - [ ] All axis origin search
-    - [ ] (Ask user for load/endurance test?)
 - Prealigner
     - [x] Find serial number
     - [x] Find prealigner type
@@ -54,20 +52,18 @@ The type of components and their configurations can be found in the list below:
     - [x] Change IP address
     - [x] Set spindle tolerance to 0 (only RA320_003)
     - [x] Set slow prealigner spindle speed (for the external notch camera)
-    - [ ] Set basic settings (which are always the same within a system):
+    - [x] Set basic settings (which are always the same within a system):
         - Host IP address
         - Host port
         - Log host
         - Host interface
         - Body no
     - [x] Backup new settings
-    - [ ] All axis origin search
-    - [ ] Ask user for endurance test?
 - Lineartrack  
     - [x] Find serial number
     - [x] Backup original settings
     - [x] Change IP address
-    - [ ] Set basic settings (which are always the same within a system):
+    - [x] Set basic settings (which are always the same within a system):
         - Host IP Address
         - Host Port
         - Log Host
@@ -78,13 +74,13 @@ The type of components and their configurations can be found in the list below:
     - [x] Read firmware version
     - [x] Backup original settings
     - [x] Change IP address
-    - [ ] Set basic settings (which are always the same within a system)
+    - [x] Set basic settings (which are always the same within a system)
         - Host IP Address
         - Host Port
         - Log Host
         - No Interpolation
     - [x] Backup new settings
-    - [ ] All axis origin search
+    - [x] All axis origin search
 
 ## List of integrated components
 
@@ -98,6 +94,11 @@ The type of components and their configurations can be found in the list below:
     - **RV201-F07-000**
 
 For safety reasons, any other component will not be able to be configured unless it is manually added.
+
+To add components, 3 files have to be modified:
+- `config.py`: Component-specific configuration dictionaries have to be added
+- `autosetup_menu.py` / `component_menu.py`: Implementation of called functions and action factories
+- `comp.py`: Component-specific methods
 
 ## Compiling and testing the software
 

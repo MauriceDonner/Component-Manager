@@ -46,7 +46,7 @@ class ComponentMenu:
         self.status_message = msg
         self.status_until = time.time() + duration
 
-    #TODO draw menu options only when component is not busy
+    # TODO draw menu options only when component is not busy (should function - test this)
     def draw(self, stdscr, current_row, labels):
         c = self.component
         stdscr.clear()
@@ -208,7 +208,7 @@ class ComponentMenu:
     
     def run(self, stdscr):
         name = self.comp_info["Name"]
-        if any(p in name for p in ["TRB", "ALN", "STG", "TBL", "SIM"]):
+        if any(p in name for p in ["TRB", "ALN", "STG", "TBL"]):
             self.component = Rorze(self.comp_info)
         else:
             raise Exception("Unsupported component type")

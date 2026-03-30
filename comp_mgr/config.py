@@ -35,10 +35,9 @@ NETWORK = {
 LOADPORTS = ["RV201-F07-000"]
 ROBOTS = ["RR754"]
 PREALIGNERS = ["RA320_002", "RA320_003", "RA420_001"]
-OTHER = ["SIM_COMPONENT", "RTS13"]
+OTHER = ["RTS13"]
 
 OTHER_IPS = {
-    # "127.0.0.1":     "Simulation",
     "172.20.9.100":  "Loadport (Unconfigured)",
     "172.20.9.101":  "Loadport (Unconfigured)",
     "172.20.9.140":  "Lineartrack (Unconfigured)",
@@ -122,11 +121,6 @@ COMPONENT_MENU_OPTIONS = {
         {'label': 'Set Log Host IP', 'type': 'value', 'action': 'set_log_host', 'action_factory': 'change_log_host_popup'},
         {'label': 'Create backup (Read Data)', 'type': 'command', 'action': 'read_data'}
     ],
-    # 'SIM_COMPONENT': [
-    #     {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'},
-    #     {'label': 'Set upper arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'upper_laser_popup'},
-    #     {'label': 'Set lower arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'lower_laser_popup'},
-    # ],
     'RR754': [
         {'label': 'Read External Sensors (GAIO)', 'type': 'command', 'action': 'GAIO'},
         {'label': 'Set Automatic Status Reports ON (SAIO)', 'type': 'command', 'action': 'SAIO_on'},
@@ -139,9 +133,6 @@ COMPONENT_MENU_OPTIONS = {
         {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'}
     ]
 }
-
-        #TODO Implement Toggle menu ? (overkill for now)
-        # {'label': 'Toggle Sensors ON/OFF', 'type': 'toggle_menu', 'options': ['Upper Arm Laser', 'Lower Arm Laser'], 'key': None}
 
 class MESSAGES:
     SUCCESS = "Program ran successfully"

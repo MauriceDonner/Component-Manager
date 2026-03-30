@@ -35,8 +35,7 @@ class Menu:
         self.button_list = self.ip_list.copy()
         self.button_list.append('Testing')
         self.button_list.append('Retry connection')
-        #TODO if len(self.ip_list) >= 2:
-        self.button_list.append('Configure all unconfigured')
+        self.button_list.append('Autosetup Menu')
         self.button_list.append('Quit')
     
     def set_status(self, message, duration=3):
@@ -125,7 +124,7 @@ class Menu:
                     threading.Thread(target=self.update_main_buttons, daemon=True).start()
                 elif selected == "[...loading]":
                     self.set_status("Please wait, until the component is connected", 3)
-                elif selected == "Configure all unconfigured":
+                elif selected == "Autosetup Menu":
                     if any(info == '[...loading]' for info in self.buttons.values()):
                         self.set_status("Please wait, until all components are connected", 3)
                     else:

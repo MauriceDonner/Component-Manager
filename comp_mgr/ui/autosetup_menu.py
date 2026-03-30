@@ -222,14 +222,15 @@ class AutosetupMenu:
             unconf_component['Type'] = f'Loadport_{free_body}'
     
     def initialize_component_dict(self, component_dict):
-        # all_components = component_dict
-        # TODO For testing
-        all_components = {
-            '172.20.9.150': {'IP': '172.20.9.150', 'System': None, 'Type': 'Prealigner', 'Name': 'ALN0', 'SN': 'ACE5CFG', 'Identifier': 'RA320_003', 'Firmware': '1.03B'},
-            '192.168.30.20': {'IP': '192.168.30.20', 'System': 'WMC', 'Type': 'Robot', 'Name': 'TRB0', 'SN': 'RC5J082', 'Identifier': 'RR754', 'Firmware': '1.19U'},
-            '192.168.30.110': {'IP': '192.168.30.110', 'System': 'WMC', 'Type': 'Loadport_1', 'Name': 'STG1', 'SN': 'STG1504', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
-            '172.20.9.100': {'IP': '172.20.9.100', 'System': None, 'Type': 'Loadport (Unconfigured)', 'Name': 'STG0', 'SN': 'STG1503', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
-            }
+        # For testing
+        # all_components = {
+        #     '172.20.9.150': {'IP': '172.20.9.150', 'System': None, 'Type': 'Prealigner', 'Name': 'ALN0', 'SN': 'ACE5CFG', 'Identifier': 'RA320_003', 'Firmware': '1.03B'},
+        #     '192.168.30.20': {'IP': '192.168.30.20', 'System': 'WMC', 'Type': 'Robot', 'Name': 'TRB0', 'SN': 'RC5J082', 'Identifier': 'RR754', 'Firmware': '1.19U'},
+        #     '192.168.30.110': {'IP': '192.168.30.110', 'System': 'WMC', 'Type': 'Loadport_1', 'Name': 'STG1', 'SN': 'STG1504', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
+        #     '172.20.9.100': {'IP': '172.20.9.100', 'System': None, 'Type': 'Loadport (Unconfigured)', 'Name': 'STG0', 'SN': 'STG1503', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
+        #     }
+
+        all_components = component_dict
 
         self.all_components = {}
         for i, ip in enumerate(all_components.keys()):
@@ -274,22 +275,20 @@ class AutosetupMenu:
         log.add(f"Starting Autosetup...")
 
         for i, entry in self.all_components.items():
-
             
             # Check, if component should be configured
             if not entry['Config_List']['Configure']['enabled']: continue
 
+            # Connect to component
+            component = Rorze(entry)
 
-            # TODO Connect to component
-            # component = Rorze(entry)
-
-            # TODO temporary parsing - change to component.ip later
+            # temporary parsing - change to component.ip later
             ip = entry["IP"]
             identifier = entry["Identifier"]
             sn = entry["SN"]
 
-            # TODO Save original component backup
-            # component.read_data()
+            # Save original component backup
+            component.read_data()
             files = os.listdir()
             if not any(f'{sn}' in f for f in files):
                 logger.error(f"Error during autosetup - No backup file was created for {sn}")
@@ -305,47 +304,47 @@ class AutosetupMenu:
                         new_ip = config["value"]
                         if ip != new_ip:
                             infostring = f"Changing IP of {identifier} from {ip} to {new_ip}" 
-                            # component.change_IP(ip,write=0)
+                            component.change_IP(ip,write=0)
                             logger.info(infostring)
                             log.add(infostring)
                     elif config_item == "Basic_Settings":
                         infostring = "Applying basic settings..."
-                        # component.basic_settings(write=0)
+                        component.basic_settings(write=0)
                         logger.info(infostring)
                         log.add(infostring)
                     elif config_item == "Spindle_Fix":
                         infostring = f"Removing Aligner Spindle offset..."
-                        #component.spindle_fix(write=0)
+                        component.spindle_fix(write=0)
                         logger.info(infostring)
                         log.add(infostring)
                     elif config_item == "Slow_Mode":
                         infostring = "Setting aligner spindle speed to slow..."
-                        #component.set_alignment_speed(speed="Slow",write=0)
+                        component.set_alignment_speed(speed="Slow",write=0)
                         logger.info(infostring)
                         log.add(infostring)
                     elif config_item == "No_Interpolation":
                         infostring = "Disabling Interpolation..."
-                        #component.no_interpolation(write=0)
+                        component.no_interpolation(write=0)
                         logger.info(infostring)
                         log.add(infostring)
                     elif config_item == "Flip_Near":
                         infostring = "Enabling flipping option of retracted arm..."
-                        #component.set_flip_near(True,write=0)
+                        component.set_flip_near(True,write=0)
                         logger.info(infostring)
                         log.add(infostring)
                     elif config_item == "Set_Body_Number":
                         body_no = config["value"]
-                        #component.set_body_no(body_no,write=0)
+                        component.set_body_no(body_no,write=0)
                         infostring = f"Setting body number of {identifier} to {body_no}..."
                         logger.info(infostring)
                         log.add(infostring)
                     
             log.add("Writing changes to flash memory...")
-            # component.write_changes()
+            component.write_changes()
 
             log.add("Saving component backup...")
-            # TODO Save altered component backup
-            # component.read_data()
+            # Save altered component backup
+            component.read_data()
 
             logger.info(f"#################### Autosetup complete for {identifier} ####################")
 
