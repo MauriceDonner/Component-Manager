@@ -20,8 +20,7 @@ class AutosetupMenu:
         self.system = None
         self.status_message = ""
         self.status_until = 0
-
-        self.initialize_component_dict(component_dict)
+        self.component_dict = component_dict
 
     def set_status(self, msg, duration=3):
         self.status_message = msg
@@ -67,15 +66,18 @@ class AutosetupMenu:
         stdscr.refresh()
 
     def run(self, stdscr):
+
+        # Return if no system configuration was chosen
+        ini = self.initialize_component_dict(stdscr, self.component_dict)
+        if ini == 'cancel':
+            return None
+
         curses.curs_set(0)
         stdscr.keypad(True)
         curses.start_color()
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
         current_row = 0
         stdscr.timeout(500)
-
-        if self.system == None:
-            self.choose_system(stdscr)
 
         while True:
             stdscr.clear()
@@ -111,14 +113,23 @@ class AutosetupMenu:
         stdscr.clear()
         stdscr.refresh()
 
+        if self.system == None:
+            return None
+
         for i, component in self.all_components.items():
+
+            # Set component target system accordingly
+            component['System'] = self.system
+
+            # Set component target IP
             target_ip = NETWORK[self.system][component["Type"]]
             if component['IP'] == target_ip:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = False
-                logger.debug(f"Skipping Target IP for {component["SN"]}")
+                logger.info(f"Skipping Target IP for {component["SN"]}")
             else:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = True
-                logger.debug(f"Setting Target IP for {component["SN"]}")
+                logger.info(f"Setting Target IP for {component["SN"]}")
+            
 
     def configure_component(self, stdscr, current_row):
         """
@@ -168,7 +179,7 @@ class AutosetupMenu:
         
         return button
 
-    def create_system_config(self):
+    def create_system_config(self, stdscr):
         # Check whether to setup for SemDex or WMC ip space
         if any(component['IP'].startswith('192.168.0.') for i, component in self.all_components.items()):
             self.system = "SEMDEX"
@@ -179,6 +190,12 @@ class AutosetupMenu:
                 raise DoubleConfiguration("Both WMC and SemDex configurations found!")
             logger.info("WMC IP found. Choosing System: WMC")
             self.system = "WMC"
+
+        if self.system == None:
+            self.choose_system(stdscr)
+            # If user selected back -> exit
+            if self.system == None:
+                return None
 
         # Set the target IP
         for component in self.all_components.values():
@@ -221,7 +238,7 @@ class AutosetupMenu:
             unconf_component['Config_List']['Set_Body_Number']['enabled'] = True
             unconf_component['Type'] = f'Loadport_{free_body}'
     
-    def initialize_component_dict(self, component_dict):
+    def initialize_component_dict(self, stdscr, component_dict):
         # For testing
         # all_components = {
         #     '172.20.9.150': {'IP': '172.20.9.150', 'System': None, 'Type': 'Prealigner', 'Name': 'ALN0', 'SN': 'ACE5CFG', 'Identifier': 'RA320_003', 'Firmware': '1.03B'},
@@ -233,6 +250,7 @@ class AutosetupMenu:
         all_components = component_dict
 
         self.all_components = {}
+
         for i, ip in enumerate(all_components.keys()):
             # Check, whether a component is in the list of known components
             if all_components[ip]['Identifier'] in CONFIG_MENU_OPTIONS:
@@ -245,18 +263,23 @@ class AutosetupMenu:
                     # Use deepcopy in order not to change the original dict in config.py
                     self.all_components[i]['Config_List'][config_item['key']] = copy.deepcopy(config_item)
             else: 
-                logger.warning(f"Component {all_components[ip]['Identifier']} not implemented in autosetup")
+                logger.debug(f"Component {all_components[ip]['Identifier']} not implemented in autosetup")
         
         # Check, how to setup loadports
         self.check_loadport_configuration() 
 
-        logger.debug('=== AUTOSETUP COMPONENTS ===')
+        logger.info('=== AUTOSETUP COMPONENTS ===')
         for component in self.all_components.values():
+            logger.info(f'{component['Type']} {component['Identifier']}')
             logger.debug(f'{component}')
 
         self.ncomponents = len(all_components)
         
-        self.create_system_config()
+        logger.info("Determining system config...")
+        self.create_system_config(stdscr)
+        if self.system == None:
+            return "cancel"
+        logger.info(f"System configuration: {self.system}")
 
         for i, component in self.all_components.items():
             target_ip = NETWORK[self.system][component["Type"]]
@@ -287,8 +310,12 @@ class AutosetupMenu:
             identifier = entry["Identifier"]
             sn = entry["SN"]
 
+            log.add(f"########## Processing {entry["Identifier"]} {entry["SN"]} ##########")
             # Save original component backup
-            component.read_data()
+            infostring = "Saving original component backup..."
+            logger.info(infostring)
+            log.add(infostring)
+            component.read_data(suffix='_ORG')
             files = os.listdir()
             if not any(f'{sn}' in f for f in files):
                 logger.error(f"Error during autosetup - No backup file was created for {sn}")
@@ -296,7 +323,6 @@ class AutosetupMenu:
                 raise NoBackup("No backup file was created")
 
             # Start going through the possible config actions
-            log.add(f"########## Processing {entry["Identifier"]} {entry["SN"]} ##########")
             for config_item, config in entry['Config_List'].items():
                 
                 if config['enabled']:
@@ -304,40 +330,40 @@ class AutosetupMenu:
                         new_ip = config["value"]
                         if ip != new_ip:
                             infostring = f"Changing IP of {identifier} from {ip} to {new_ip}" 
-                            component.change_IP(ip,write=0)
                             logger.info(infostring)
                             log.add(infostring)
+                            component.change_IP(new_ip,write=0)
                     elif config_item == "Basic_Settings":
                         infostring = "Applying basic settings..."
-                        component.basic_settings(write=0)
                         logger.info(infostring)
                         log.add(infostring)
+                        component.basic_settings(write=0)
                     elif config_item == "Spindle_Fix":
                         infostring = f"Removing Aligner Spindle offset..."
-                        component.spindle_fix(write=0)
                         logger.info(infostring)
                         log.add(infostring)
+                        component.spindle_fix(write=0)
                     elif config_item == "Slow_Mode":
                         infostring = "Setting aligner spindle speed to slow..."
-                        component.set_alignment_speed(speed="Slow",write=0)
                         logger.info(infostring)
                         log.add(infostring)
+                        component.set_alignment_speed(speed="Slow",write=0)
                     elif config_item == "No_Interpolation":
                         infostring = "Disabling Interpolation..."
-                        component.no_interpolation(write=0)
                         logger.info(infostring)
                         log.add(infostring)
+                        component.no_interpolation(write=0)
                     elif config_item == "Flip_Near":
                         infostring = "Enabling flipping option of retracted arm..."
-                        component.set_flip_near(True,write=0)
                         logger.info(infostring)
                         log.add(infostring)
+                        component.set_flip_near("On",write=0)
                     elif config_item == "Set_Body_Number":
                         body_no = config["value"]
-                        component.set_body_no(body_no,write=0)
                         infostring = f"Setting body number of {identifier} to {body_no}..."
                         logger.info(infostring)
                         log.add(infostring)
+                        component.set_body_no(body_no,write=0)
                     
             log.add("Writing changes to flash memory...")
             component.write_changes()

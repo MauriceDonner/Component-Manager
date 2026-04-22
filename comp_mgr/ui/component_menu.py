@@ -206,6 +206,17 @@ class ComponentMenu:
             component.set_alignment_speed(speed=setting)
         return _action
     
+    def set_flip_near_popup(self, stdscr):
+        def _action(component):
+            options = {
+                'On': {"label": "On", "type": "selection", "key": "On"},
+                'Off': {"label": "Off", "type": "selection", "key": "Off"}
+            }
+            popup = PopupMenu(stdscr, f"Set flip near", options)
+            setting = popup.run()
+            component.set_flip_near(setting=setting)
+        return _action
+    
     def run(self, stdscr):
         name = self.comp_info["Name"]
         if any(p in name for p in ["TRB", "ALN", "STG", "TBL"]):

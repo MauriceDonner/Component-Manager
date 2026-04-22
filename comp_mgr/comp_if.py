@@ -129,7 +129,6 @@ class CompIF:
             # If Rorze component, return name and serial number
             if any(p in read for p in ['TRB','ALN','STG','TBL']):
                 name = message.split('.')[0][1:]
-                logger.info(f"Component type detected: Rorze {name}")
                 # Get Rorze Serial Number
                 sn_command = f"o{name}.DEQU.GTDT[0]"
                 serial_number = self.send_and_read_rorze(sock,sn_command)
@@ -142,7 +141,8 @@ class CompIF:
                 comp_info["SN"] = serial_number.split('"')[1]
                 comp_info["Identifier"] = identifier
                 comp_info["Firmware"] = firmware
-                logger.info(f"Received component info: {comp_info}")
+                logger.info(f"{ip} - Component type detected: Rorze {identifier}")
+                logger.debug(f"Received component info: {comp_info}")
 
                 # If prealigner, set the status events to off (done by maintenance software)
                 self.send_and_read_rorze(sock, f"o{name}.EVNT(0,0)")
@@ -154,19 +154,19 @@ class CompIF:
                 comp_info["SN"] = None
                 comp_info["Identifier"] = None
                 comp_info["Firmware"] = None
-                logger.info(f"Received component info: {comp_info}")
+                logger.debug(f"Received component info: {comp_info}")
                 sock.close()
                 return comp_info
 
         except socket.timeout:
-            logger.warning(f"Comp_IF.get_component_info() -> Connection Timeout when connecting to {ip}.")
+            logger.debug(f"Comp_IF.get_component_info() -> Connection Timeout when connecting to {ip}.")
         except socket.error as e:
-            logger.warning(f"Comp_IF.get_component_info -> Connection attempt to unsuccessful: {e}")
+            logger.debug(f"Comp_IF.get_component_info -> Connection attempt to unsuccessful: {e}")
 
         # If no connection can be established, return empty info
         comp_info["Name"] = None
         comp_info["SN"] = None
         comp_info["Identifier"] = None
         comp_info["Firmware"] = None
-        logger.info(f"Received component info: {comp_info}")
+        logger.debug(f"Received component info: {comp_info}")
         return comp_info

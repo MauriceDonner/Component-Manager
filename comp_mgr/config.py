@@ -14,9 +14,6 @@ NETWORK = {
         "Prealigner":    "192.168.0.151",
     },
     "WMC": {
-        "Cam_Handling":  "192.168.30.4",
-        "Cam_Metrology": "192.168.30.5",
-        "Pendant":       "192.168.30.6",
         "Robot":         "192.168.30.20",
         "Lineartrack":   "192.168.30.21",
         "WID_Reader":    "192.168.30.61",
@@ -38,25 +35,18 @@ PREALIGNERS = ["RA320_002", "RA320_003", "RA420_001"]
 OTHER = ["RTS13"]
 
 OTHER_IPS = {
-    "172.20.9.100":  "Loadport (Unconfigured)",
-    "172.20.9.101":  "Loadport (Unconfigured)",
-    "172.20.9.140":  "Lineartrack (Unconfigured)",
-    "172.20.9.150":  "Robot (Unconfigured)",
-    "172.20.9.151":  "Robot (Unconfigured)",
-    "172.20.9.160":  "Prealigner (Unconfigured)",
-    "172.20.9.161":  "Prealigner (Unconfigured)",
-    "172.20.9.220":  "Teaching Pendant (Unconfigured)",
+    "172.20.9.100":  "Loadport",
+    "172.20.9.101":  "Loadport",
+    "172.20.9.140":  "Lineartrack",
+    "172.20.9.150":  "Robot",
+    "172.20.9.151":  "Robot",
+    "172.20.9.160":  "Prealigner",
+    "172.20.9.161":  "Prealigner",
+    "172.20.9.220":  "Teaching Pendant",
     "192.168.0.2":   "SEMDEX Teaching Pendant",
     "192.168.0.161": "SEMDEX WID reader",
     "192.168.30.1":  "WMC Software PC",
     "192.168.40.2":  "WMC Hardware PC",
-    "192.168.30.55": "Reolink Camera (?)",
-    "192.168.30.56": "Reolink Camera (?)",
-    "192.168.30.57": "Reolink Camera (?)",
-    "192.168.30.58": "Reolink Camera (?)",
-    "192.168.30.59": "Reolink Camera (?)",
-    "192.168.30.240":"Reolink Camera (?)",
-    "192.168.30.241":"Reolink Camera (?)",
     "192.168.60.55": "Reolink Camera (?)",
     "192.168.60.56": "Reolink Camera (?)",
     "192.168.60.57": "Reolink Camera (?)",
@@ -127,7 +117,8 @@ COMPONENT_MENU_OPTIONS = {
         {'label': 'Set Automatic Status Reports OFF (SAIO)', 'type': 'command', 'action': 'SAIO_off'},
         {'label': 'Set upper arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'upper_laser_popup'},
         {'label': 'Set lower arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'lower_laser_popup'},
-        {'label': 'No Interpolation', 'type': 'command', 'action': 'no_interpolation'}
+        {'label': 'No Interpolation', 'type': 'command', 'action': 'no_interpolation'},
+        {'label': 'Set Flip near', 'type': 'command', 'action': 'set_flip_near', 'action_factory': 'set_flip_near_popup'}
     ],
     'RV201-F07-000': [
         {'label': 'Get Rotary Switch Position', 'type': 'command', 'action': 'get_rotary_switch_value'}

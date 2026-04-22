@@ -10,10 +10,11 @@ When new components are added, they must be implemented individually here for:
 - reading a backup (read_data)
 """
 import logging
+import ipaddress
 import os
 import socket
 import threading
-from comp_mgr.exceptions import NoSystem
+from comp_mgr.exceptions import NoSystem, Unhandled
 from datetime import datetime
 from typing import TextIO, Union
 from comp_mgr.config import PREALIGNERS, LOADPORTS, ROBOTS, OTHER
@@ -156,7 +157,7 @@ class Rorze():
 
     # ========== Define commands here ==========
 
-    def basic_settings(self):
+    def basic_settings(self, write=1):
         """
         Basic settings to change for every component
         - TCP/IP Port
@@ -165,7 +166,7 @@ class Rorze():
         + Component-Specific Stuff
         """
         # System-Specific settings
-        host_ip = "255.255.255.255"
+        host_ip = -1
         port = 12000
         if self.system == "WMC":
             log_host = "192.168.30.1"
@@ -178,24 +179,23 @@ class Rorze():
         # Component-specific settings
         if self.identifier in LOADPORTS:
             logger.info("Changing the following Loadport settings: TCP/IP Port | Host IP | Log Host | Auto Output | Presence LED | I/O")
-            self.set_loadport_settings()
+            self.set_loadport_settings(write)
         
         elif self.identifier in PREALIGNERS:
             logger.info("Changing the following Prealigner settings: TCP/IP Port | Host IP | Log Host | Host Interface | Body no")
-            self.set_host_interface()
-            self.set_body_no(1)
+            self.set_host_interface(write)
+            self.set_body_no(1,write)
 
         elif self.identifier in ROBOTS:
-            logger.info("Changing the following Robot settings: TCP/IP Port | Host IP | Log Host | No Interpolation")
-            self.no_interpolation()
+            logger.info("Changing the following Robot settings: TCP/IP Port | Host IP | Log Host")
         
         elif self.identifier == "RTS13":
             logger.info("Changing the following Lineartrack settings: TCP/IP Port | Host IP | Log Host")
 
         # Common Settings
-        self.set_host_port(port)
-        self.set_host_IP(host_ip)
-        self.set_log_host(log_host)
+        self.set_host_IP(host_ip, write)
+        self.set_host_port(port, write)
+        self.set_log_host(log_host, write)
 
     def change_IP(self, ip, write=1):
         # Implement different component types here
@@ -212,6 +212,12 @@ class Rorze():
         message = self.send_and_read(command)
         if write: self.write_changes()
         self.status = f"IP set to {ip}. Please restart the component. ({message})"
+    
+    def convert_IP(self, ip):
+        """Convert ip from string into Rorze int format, in which octets are reversed"""
+        # Convert "1.2.3.4" into int("4.3.2.1")
+        new_ip_int = int(ipaddress.IPv4Address(".".join(f'{ip}'.split('.')[::-1])))
+        return new_ip_int
 
     def GAIO(self):
         command = f"{self.read_name()}.GAIO"
@@ -298,13 +304,13 @@ class Rorze():
             alignment_speed = 120000
 
         # Set acceleration for alignment operation
-        command = f"{self.read_name()}.DRCS[003].STDT[10]={alignment_acceleration}"
+        command = f"{self.read_name()}.DRCS.STDT[003][10]={alignment_acceleration}"
         self.send_and_read(command)
         # Set speed for alignment operation
-        command = f"{self.read_name()}.DRCS[003].STDT[11]={alignment_speed}"
+        command = f"{self.read_name()}.DRCS.STDT[003][11]={alignment_speed}"
         self.send_and_read(command)
         # Set deceleration for alignment operation
-        command = f"{self.read_name()}.DRCS[003].STDT[12]={alignment_acceleration}"
+        command = f"{self.read_name()}.DRCS.STDT[003][12]={alignment_acceleration}"
         self.send_and_read(command)
         logger.info(f"Setting aligner speed to {alignment_speed} and acceleration to {alignment_acceleration}")
         if write: self.write_changes()
@@ -322,13 +328,19 @@ class Rorze():
         self.status = f"Body no set to {body_no}"
 
     def set_flip_near(self, setting, write=1):
-        software_switch = self.send_and_read(f"{self.read_name}.DEQU.GTDT[8]")
+        software_switch = self.send_and_read(f"{self.read_name()}.DEQU.GTDT[8]")
+        logger.debug(f"Software_switch before cutting: {software_switch}")
+        software_switch = int(software_switch.split(":")[1])
+        logger.debug(f"Software_switch after cutting: {software_switch}")
         # Flip the 28th bit, which corresponds to the 'flip finger near' setting
-        if setting:
-            software_switch ^= (1 << 28)
+        if setting == "Off":
+            software_switch |= (1 << 28)
+        elif setting == "On":
+            software_switch &= ~(1 << 28)
         else:
-            software_switch ^= (0 << 28)
-        self.send_and_read(f"{self.read_name}.DEQU.STDT[8]={software_switch}")
+            logger.error("Unhandled exception")
+            raise Unhandled
+        self.send_and_read(f"{self.read_name()}.DEQU.STDT[8]={software_switch}")
         logger.info(f"Setting robot software switch to {software_switch}")
         if write: self.write_changes()
     
@@ -388,12 +400,14 @@ class Rorze():
             self.status = f"Set basic loadport settings"
     
     def set_log_host(self, ip, write=1):
-        if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
-            command = f"{self.read_name()}.DEQU.STDT[69]={ip}"
+        if self.identifier in PREALIGNERS:
+            command = f"{self.read_name()}.DEQU.STDT[4]={ip}"
             self.send_and_read(command)
             if write: self.write_changes()
-        elif self.identifier in PREALIGNERS:
-            command = f"{self.read_name()}.DEQU.STDT[4]={ip}"
+        elif any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, OTHER]):
+            # Convert ip to int following rorze method
+            ip_int = self.convert_IP(ip)
+            command = f"{self.read_name()}.DEQU.STDT[69]={ip_int}"
             self.send_and_read(command)
             if write: self.write_changes()
         else:
@@ -405,9 +419,9 @@ class Rorze():
         self.status = f"Log host set to {ip}."
     
     def spindle_fix(self, write=1):
-        command = f"{self.read_name()}.DALN[0].STDT[37]=100"
+        command = f"{self.read_name()}.DALN.STDT[0][37]=100"
         self.send_and_read(command)
-        command = f"{self.read_name()}.DALN[0].STDT[38]=100"
+        command = f"{self.read_name()}.DALN.STDT[0][38]=100"
         self.send_and_read(command)
         if write: self.write_changes()
 
@@ -419,7 +433,7 @@ class Rorze():
         self.status = "Changes saved to flash memory."
         self.sock.settimeout(self.TIMEOUT)
     
-    def read_data(self):
+    def read_data(self, suffix=""):
         """
         This serves the same purpose as the 'Read Data' button in the
         Rorze maintenance software. It is slightly different for each component.
@@ -636,17 +650,17 @@ class Rorze():
         # Timestamp
         ts = datetime.now().strftime("%Y%m%d")
         index = 1
-        filename = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}.dat"
+        filename = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
         logger.debug(f"Reading data to {filename}")
 
         # Make sure to not overwrite a previous backup
         file_exists = 1 if os.path.exists(filename) else 0
         while file_exists:
             index+=1
-            filename = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}.dat"
-            logger.warning(f"File exists! Changing filename to {filename}")
+            filename = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
             if not os.path.exists(filename):
                 break
+        logger.warning(f"File exists! Changing filename to {filename}")
 
         try: 
             if self.identifier in LOADPORTS:

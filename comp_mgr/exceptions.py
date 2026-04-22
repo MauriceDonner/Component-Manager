@@ -21,3 +21,7 @@ class NoSystem(AutosetupMenuError):
 class TestException(AutosetupMenuError):
     """Test whether exceptions are handled correctly"""
     pass
+
+class Unhandled(Exception):
+    """Raise when no Exception has been defined yet"""
+    pass

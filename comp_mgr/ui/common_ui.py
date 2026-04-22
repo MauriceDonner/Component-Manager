@@ -165,7 +165,6 @@ class PopupMenu:
                 self.current_row = (self.current_row + 1) % len(self.items)
             elif key == ord("\n"):
                 selected = self.items[self.current_row]
-                logger.debug(selected)
                 label = selected.get("label", None)
                 type = selected.get("type", None)
                 config_entry = selected.get("key", None)
