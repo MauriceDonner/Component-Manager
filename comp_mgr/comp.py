@@ -13,9 +13,11 @@ import logging
 import ipaddress
 import os
 import socket
+import sys
 import threading
 from comp_mgr.exceptions import NoSystem, Unhandled
 from datetime import datetime
+from pathlib import Path
 from typing import TextIO, Union
 from comp_mgr.config import PREALIGNERS, LOADPORTS, ROBOTS, OTHER
 
@@ -224,6 +226,12 @@ class Rorze():
         message = self.send_and_read(command)
         self.status = message
 
+    def get_backup_dir(self):
+        """Makes sure, that Pyinstaller doesn't reset the cwd"""
+        if getattr(sys, "frozen", False):
+            return Path(sys.executable).parent
+        return Path(__file__).resolve().parent
+
     def get_host_IP(self):
         command = f"{self.read_name()}.DEQU.GTDT[1]"
         ip = self.send_and_read(command)
@@ -319,6 +327,14 @@ class Rorze():
         if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, PREALIGNERS]):
             command = f"{self.read_name()}.DEQU.STDT[6]={body_no}"
             self.send_and_read(command)
+
+            # If Body No. >1 - Also change IP
+            if body_no > 1:
+                logger.info("Setting IP according to Body No")
+                if self.system == "WMC":
+                    self.change_IP(f"192.168.30.1{body_no}0")
+                elif self.system == "SEMDEX":
+                    self.change_IP(f"192.168.0.2{body_no}")
             if write: self.write_changes()
         else:
             status = f"Component type {self.identifier} has not been implemented"
@@ -417,6 +433,19 @@ class Rorze():
             return
 
         self.status = f"Log host set to {ip}."
+
+    def set_notch_angle(self, notch_angle, write=1):
+        if self.identifier == "RA320_003":
+            command = f"{self.read_name()}.DALN.STDT[0][17]={notch_angle}"
+            self.send_and_read(command)
+        elif self.identifier in ["RA320_002", "RA321_001"]:
+            command = f"{self.read_name()}.DALN.STDT[0][14]={notch_angle}"
+            self.send_and_read(command)
+        elif self.identifier == "RA420_001":
+            for work in range(3):
+                command = f"{self.read_name()}.DALN.STDT[{work}][14]={notch_angle}"
+                self.send_and_read(command)
+        if write: self.write_changes()
     
     def spindle_fix(self, write=1):
         command = f"{self.read_name()}.DALN.STDT[0][37]=100"
@@ -438,10 +467,6 @@ class Rorze():
         This serves the same purpose as the 'Read Data' button in the
         Rorze maintenance software. It is slightly different for each component.
         """
-        # Save log level and set to INFO
-        log_level = logging.getLogger(__name__).level
-        logging.getLogger(__name__).setLevel(logging.INFO)
-
         self.status = "Reading data..."
         
         def read_ip_prefix(self, file):
@@ -650,17 +675,25 @@ class Rorze():
         # Timestamp
         ts = datetime.now().strftime("%Y%m%d")
         index = 1
-        filename = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
+        backup_dir = self.get_backup_dir()
+        filename_file = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
+        filename = backup_dir / filename_file
+
         logger.debug(f"Reading data to {filename}")
 
         # Make sure to not overwrite a previous backup
-        file_exists = 1 if os.path.exists(filename) else 0
-        while file_exists:
+        while os.path.exists(filename):
             index+=1
-            filename = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
-            if not os.path.exists(filename):
-                break
-        logger.warning(f"File exists! Changing filename to {filename}")
+            filename_short = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
+            filename = backup_dir / filename
+            logger.warning(f"File exists! Changing filename to {filename}")
+
+        logger.debug(f"cwd = {os.getcwd()}")
+        logger.debug(f"writing backup to = {os.path.abspath(filename)}")
+
+        # Save log level and set to INFO to avoid hundreds of debug msgs
+        log_level = logging.getLogger(__name__).level
+        logging.getLogger(__name__).setLevel(logging.INFO)
 
         try: 
             if self.identifier in LOADPORTS:

@@ -85,9 +85,12 @@ class AutosetupMenu:
             key = stdscr.getch()
             if key == curses.KEY_UP:
                 current_row = (current_row - 1) % len(self.button_list)
+                logger.debug(f"Current row: {current_row}")
             elif key == curses.KEY_DOWN:
                 current_row = (current_row + 1) % len(self.button_list)
+                logger.debug(f"Current row: {current_row}")
             elif key == ord('\n'):
+                logger.debug(f"Current row: {current_row}")
                 selected = self.button_list[current_row]
                 if selected == '- Start Autosetup':
                     self.autosetup(stdscr)
@@ -100,6 +103,7 @@ class AutosetupMenu:
                     sys.exit(0)
                 else:
                     self.configure_component(stdscr, current_row)
+                    self.check_body_IP(current_row)
                     self.set_status(f"{self.all_components[current_row]['Type']} config updated")
 
     def choose_system(self, stdscr):
@@ -136,8 +140,10 @@ class AutosetupMenu:
         This method contains all different steps of configuration based on which component is fed to it.
         Data for each component is stored in config.py
         """
-        component_dict = self.all_components[current_row]['Config_List']
-        popup = PopupMenu(stdscr, "Select Configuration", component_dict)
+        for i, component in self.all_components.items():
+            logger.debug(f"{i}, {component}")
+        config_dict = self.all_components[current_row]['Config_List']
+        popup = PopupMenu(stdscr, "Select Configuration", config_dict)
         popup.run()
         stdscr.clear()
         stdscr.refresh()
@@ -202,6 +208,16 @@ class AutosetupMenu:
             target_ip = NETWORK[self.system][component['Type']]
             component['Config_List']['Target_IP']['value'] = target_ip
     
+    def check_body_IP(self, component_ID):
+        """When configuring a components' body no. -> Make sure the IP changes accordingly"""
+        component = self.all_components[component_ID]
+        if component['Config_List'].get('Set_Body_Number', False):
+            body_no = component['Config_List']['Set_Body_Number']['value']
+            if self.system == "WMC":
+                self.all_components[component_ID]['Config_List']['Target_IP']['value'] = f'192.168.30.1{body_no}0'
+            elif self.system == "SEMDEX":
+                self.all_components[component_ID]['Config_List']['Target_IP']['value'] = f'192.168.0.2{body_no}'
+
     def check_loadport_configuration(self):
         """
         Method will check how many LPs are connected. Two cases have to be handled in case of multiple LPs:
@@ -211,7 +227,6 @@ class AutosetupMenu:
         """
         configured = [False, False, False]
         unconfigured = []
-        body_number = 1
         for idx, component in self.all_components.items():
             ctype = component["Type"]
             # Check, if there are any configured loadports within the system
@@ -237,6 +252,19 @@ class AutosetupMenu:
             unconf_component['Config_List']['Set_Body_Number']['value'] = free_body
             unconf_component['Config_List']['Set_Body_Number']['enabled'] = True
             unconf_component['Type'] = f'Loadport_{free_body}'
+        
+    def check_prealigner_configuration(self):
+        if self.system == "SEMDEX":
+            PA_angle = 90000
+        elif self.system == "WMC":
+            PA_angle = 180000
+
+        # Find Prealigner and change the setting
+        for idx, component in self.all_components.items():
+            ctype = component["Type"]
+            if ctype == "Prealigner":
+                logger.debug(self.all_components[idx])
+                self.all_components[idx]['Config_List']['Notch_Angle']['value'] = PA_angle
     
     def initialize_component_dict(self, stdscr, component_dict):
         # For testing
@@ -251,10 +279,12 @@ class AutosetupMenu:
 
         self.all_components = {}
 
+        component_idx = 0
         for i, ip in enumerate(all_components.keys()):
             # Check, whether a component is in the list of known components
             if all_components[ip]['Identifier'] in CONFIG_MENU_OPTIONS:
-                self.all_components[i] = all_components[ip]
+                self.all_components[component_idx] = all_components[ip]
+                component_idx+=1
                 # Set up a configuration list for each component
                 type = self.all_components[i]['Identifier']
                 config_list = CONFIG_MENU_OPTIONS['Common'] + CONFIG_MENU_OPTIONS[type]
@@ -280,6 +310,9 @@ class AutosetupMenu:
         if self.system == None:
             return "cancel"
         logger.info(f"System configuration: {self.system}")
+
+        # Check, how to setup prealigner, after system is set
+        self.check_prealigner_configuration()
 
         for i, component in self.all_components.items():
             target_ip = NETWORK[self.system][component["Type"]]
@@ -333,6 +366,12 @@ class AutosetupMenu:
                             logger.info(infostring)
                             log.add(infostring)
                             component.change_IP(new_ip,write=0)
+                    if config_item == "Notch_Angle":
+                        notch_angle = config["value"]
+                        infostring = f"Setting notch angle of {identifier} to {notch_angle} mdeg"
+                        logger.info(infostring)
+                        log.add(infostring)
+                        component.set_notch_angle(notch_angle,write=0)
                     elif config_item == "Basic_Settings":
                         infostring = "Applying basic settings..."
                         logger.info(infostring)

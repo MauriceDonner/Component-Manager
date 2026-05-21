@@ -35,8 +35,8 @@ PREALIGNERS = ["RA320_002", "RA320_003", "RA420_001"]
 OTHER = ["RTS13"]
 
 OTHER_IPS = {
-    "172.20.9.100":  "Loadport",
-    "172.20.9.101":  "Loadport",
+    "172.20.9.100":  "Loadport_1",
+    "172.20.9.101":  "Loadport_1",
     "172.20.9.140":  "Lineartrack",
     "172.20.9.150":  "Robot",
     "172.20.9.151":  "Robot",
@@ -92,12 +92,15 @@ CONFIG_MENU_OPTIONS = {
     'RA320_003': [
         { 'label': 'Spindle tolerance fix', 'type': 'checkbox', 'key': 'Spindle_Fix', 'enabled': True},
         { 'label': 'Slow mode (Ext. notch)', 'type': 'checkbox', 'key': 'Slow_Mode', 'enabled': False},
+        { 'label': 'Notch angle', 'type': 'value', 'key': 'Notch_Angle', 'value': None, 'enabled': True}
     ],
     'RR754': [
         { 'label': 'No interpolation', 'type': 'checkbox', 'key': 'No_Interpolation', 'enabled': True},
         { 'label': 'Flip near', 'type': 'checkbox', 'key': 'Flip_Near', 'enabled': True},
     ],
-    'RA420_001': [],
+    'RA420_001': [
+        { 'label': 'Notch angle', 'type': 'value', 'key': 'Notch_Angle', 'value': None, 'enabled': False}
+    ],
     'RTS13': [],
     'RV201-F07-000': [
         { 'label': 'Set Body Number', 'type': 'sub_selection', 'options': [1,2,3], 'key': 'Set_Body_Number', 'value': None, 'initial': None, 'enabled': False }
