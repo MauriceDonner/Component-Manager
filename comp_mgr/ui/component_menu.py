@@ -26,7 +26,7 @@ class ComponentMenu:
         def action_callable(component, fn=action_name):
             method = getattr(component, fn, None) # component.fn
             if not callable(method):
-                self.set_status(f'Action not implemented', 3)
+                self.set_status('Action not implemented', 3)
                 return
             return method()
         resolved['action'] = action_callable
@@ -114,7 +114,8 @@ class ComponentMenu:
             current = component.get_host_IP()
             ip = PopupInput(stdscr, f"Set Host IP Address ({current})", "Enter IP address: ").draw()
             try:
-                iptest = ipaddress.IPv4Address(ip)
+                # Test whether ip is correct (throws exception if not)
+                ipaddress.IPv4Address(ip)
                 component.set_host_IP(ip)
             except ipaddress.AddressValueError:
                 logger.error(f"ValueError in ip address. Expected 4 octets in {ip}")
@@ -128,14 +129,14 @@ class ComponentMenu:
             try:
                 port_int = int(port)
             except:
-                logger.error(f"Value error in port: Value is not a valid number (0-65535)")
-                self.set_status(f"The entered value is not a valid number (0-65535)")
+                logger.error("Value error in port: Value is not a valid number (0-65535)")
+                self.set_status("The entered value is not a valid number (0-65535)")
                 return
             if 0 <= port_int < 65536:
                 component.set_host_port(port)
             else:
-                logger.error(f"Value error in port: Value exceeds the port limit (0-65535)")
-                self.set_status(f"Port parsing error. Port exceeds limit (0-65535)")
+                logger.error("Value error in port: Value exceeds the port limit (0-65535)")
+                self.set_status("Port parsing error. Port exceeds limit (0-65535)")
         return _action
 
     def upper_laser_popup(self, stdscr):
@@ -144,7 +145,7 @@ class ComponentMenu:
                 'on': {"label": "on", "type": "selection", "key": "on"},
                 'off': {"label": "off", "type": "selection", "key": "off"}
             }
-            popup = PopupMenu(stdscr, f"Set upper laser", options)
+            popup = PopupMenu(stdscr, "Set upper laser", options)
             setting = popup.run()
             if setting: 
                 component.set_laser('upper', setting)
@@ -156,7 +157,7 @@ class ComponentMenu:
                 'on': {"label": "on", "type": "selection", "key": "on"},
                 'off': {"label": "off", "type": "selection", "key": "off"}
             }
-            popup = PopupMenu(stdscr, f"Set lower laser", options)
+            popup = PopupMenu(stdscr, "Set lower laser", options)
             setting = popup.run()
             if setting: 
                 component.set_laser('lower', setting)
@@ -167,7 +168,8 @@ class ComponentMenu:
             current = component.get_log_host()
             ip = PopupInput(stdscr, f"Set IP address of the log host ({current})", "Enter IP address: ").draw()
             try:
-                iptest = ipaddress.IPv4Address(ip)
+                # Test whether ip is correct (throws exception if not)
+                ipaddress.IPv4Address(ip)
                 component.set_log_host(ip)
             except ipaddress.AddressValueError:
                 logger.error(f"ValueError in ip address. Expected 4 octets in {ip}")
@@ -178,7 +180,8 @@ class ComponentMenu:
         def _action(component):
             ip = PopupInput(stdscr, "Change component IP", "Enter IP address: ").draw()
             try:
-                iptest = ipaddress.IPv4Address(ip)
+                # Test whether ip is correct (throws exception if not)
+                ipaddress.IPv4Address(ip)
                 component.change_IP(ip)
             except ipaddress.AddressValueError:
                 logger.error(f"ValueError in ip address. Expected 4 octets in {ip}")
@@ -212,7 +215,7 @@ class ComponentMenu:
                 'On': {"label": "On", "type": "selection", "key": "On"},
                 'Off': {"label": "Off", "type": "selection", "key": "Off"}
             }
-            popup = PopupMenu(stdscr, f"Set flip near", options)
+            popup = PopupMenu(stdscr, "Set flip near", options)
             setting = popup.run()
             component.set_flip_near(setting=setting)
         return _action

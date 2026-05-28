@@ -1,6 +1,5 @@
 import copy
 import curses
-import ipaddress
 import logging
 import os
 import sys
@@ -175,7 +174,7 @@ class AutosetupMenu:
                         display_text = config_list[config_item]['label']
                         display.append(display_text)
         else: 
-            display.append(f"Do not configure")
+            display.append("Do not configure")
                 
         # Concatenate display entries to a single button
         if len(display) > 1:
@@ -270,10 +269,10 @@ class AutosetupMenu:
         # For testing
         # all_components = {
         #     '172.20.9.150': {'IP': '172.20.9.150', 'System': None, 'Type': 'Prealigner', 'Name': 'ALN0', 'SN': 'ACE5CFG', 'Identifier': 'RA320_003', 'Firmware': '1.03B'},
-        #     '192.168.30.20': {'IP': '192.168.30.20', 'System': 'WMC', 'Type': 'Robot', 'Name': 'TRB0', 'SN': 'RC5J082', 'Identifier': 'RR754', 'Firmware': '1.19U'},
-        #     '192.168.30.110': {'IP': '192.168.30.110', 'System': 'WMC', 'Type': 'Loadport_1', 'Name': 'STG1', 'SN': 'STG1504', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
-        #     '172.20.9.100': {'IP': '172.20.9.100', 'System': None, 'Type': 'Loadport (Unconfigured)', 'Name': 'STG0', 'SN': 'STG1503', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
-        #     }
+            # '192.168.30.20': {'IP': '192.168.30.20', 'System': 'WMC', 'Type': 'Robot', 'Name': 'TRB0', 'SN': 'RC5J082', 'Identifier': 'RR754', 'Firmware': '1.19U'},
+            # '192.168.30.110': {'IP': '192.168.30.110', 'System': 'WMC', 'Type': 'Loadport_1', 'Name': 'STG1', 'SN': 'STG1504', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
+            # '172.20.9.100': {'IP': '172.20.9.100', 'System': None, 'Type': 'Loadport (Unconfigured)', 'Name': 'STG0', 'SN': 'STG1503', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
+            # }
 
         all_components = component_dict
 
@@ -328,7 +327,7 @@ class AutosetupMenu:
         """
         # Start the log screen
         log = ScrollingLog(stdscr)
-        log.add(f"Starting Autosetup...")
+        log.add("Starting Autosetup...")
 
         for i, entry in self.all_components.items():
             
@@ -378,7 +377,7 @@ class AutosetupMenu:
                         log.add(infostring)
                         component.basic_settings(write=0)
                     elif config_item == "Spindle_Fix":
-                        infostring = f"Removing Aligner Spindle offset..."
+                        infostring = "Removing Aligner Spindle offset..."
                         logger.info(infostring)
                         log.add(infostring)
                         component.spindle_fix(write=0)

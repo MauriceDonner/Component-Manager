@@ -12,7 +12,7 @@ class TestingMenu:
 
     def draw(self, stdscr, current_row):
         stdscr.clear()
-        stdscr.addstr(0,0,f"Testing area, proceed with caution!")
+        stdscr.addstr(0,0,"Testing area, proceed with caution!")
         for i, row in enumerate(self.tests.button_list):
             if i == current_row:
                 stdscr.attron(curses.color_pair(1))

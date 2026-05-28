@@ -75,7 +75,7 @@ class Rorze():
                 logger.info(f"Connection to {self.display_name} successful")
         except socket.timeout:
             self.status = "ERROR: Connection Timeout"
-            logger.error(f"Connection Timeout")
+            logger.error("Connection Timeout")
             self.busy = True
         except socket.error as e:
             self.busy = True
@@ -230,7 +230,8 @@ class Rorze():
         """Makes sure, that Pyinstaller doesn't reset the cwd"""
         if getattr(sys, "frozen", False):
             return Path(sys.executable).parent
-        return Path(__file__).resolve().parent
+        else:
+            return Path(__file__).resolve().parent.parent
 
     def get_host_IP(self):
         command = f"{self.read_name()}.DEQU.GTDT[1]"
@@ -295,13 +296,13 @@ class Rorze():
         command = f"{self.read_name()}.SAIO(00000000000000000000000100000010,00000000000000000000000000000000,0000000000)"
         message = self.send_and_read(command)
         logger.debug(message)
-        self.status = f"Automatic status ON. Response logged."
+        self.status = "Automatic status ON. Response logged."
 
     def SAIO_off(self):
         command = f"{self.read_name()}.SAIO(00000000000000000000000000000000,00000000000000000000000000000000,0000000000)"
         message = self.send_and_read(command)
         logger.debug(message)
-        self.status = f"Automatic status OFF. Response logged."
+        self.status = "Automatic status OFF. Response logged."
 
     def set_alignment_speed(self, speed, write=1):
         if speed == "Slow":
@@ -404,7 +405,7 @@ class Rorze():
         command = f"{self.read_name()}.ARM{arm_no}.DCMD({set_bit},1)"
         message = self.send_and_read(command)
         self.GAIO()
-        self.status = f"{arm} arm laser turned {setting}"
+        self.status = f"{arm} arm laser turned {setting}. ({message})"
     
     def set_loadport_settings(self, write=1):
         """Sets the bits for system data according to checklists (last updated: 2026-02-20)"""
@@ -413,7 +414,7 @@ class Rorze():
             command = f"{self.read_name()}.DEQU.STDT[8]=299129"
             self.send_and_read(command)
             if write: self.write_changes()
-            self.status = f"Set basic loadport settings"
+            self.status = "Set basic loadport settings"
     
     def set_log_host(self, ip, write=1):
         if self.identifier in PREALIGNERS:
@@ -562,7 +563,6 @@ class Rorze():
         
         def read_data_prealigner(self, filename):
             with open(f"{filename}", "x") as backup:
-
                 if self.identifier == "RA320_002":
                     read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
                     read_block(self,"DEQU", 1, "STDT", backup, add_leading=True)
@@ -685,7 +685,7 @@ class Rorze():
         while os.path.exists(filename):
             index+=1
             filename_short = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
-            filename = backup_dir / filename
+            filename = backup_dir / filename_short
             logger.warning(f"File exists! Changing filename to {filename}")
 
         logger.debug(f"cwd = {os.getcwd()}")

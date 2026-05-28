@@ -115,7 +115,7 @@ class Menu:
                 elif selected == 'Testing':
                     TestingMenu().run(stdscr)
                 elif selected == 'Retry connection':
-                    stdscr.addstr(len(self.button_list) + 3, 2, f"Scanning for components...")
+                    stdscr.addstr(len(self.button_list) + 3, 2, "Scanning for components...")
                     stdscr.refresh()
                     comp_if = CompIF()
                     self.ip_list = comp_if.discover()

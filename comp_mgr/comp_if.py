@@ -8,7 +8,6 @@ import concurrent.futures
 import logging
 import socket
 import subprocess
-import time
 from comp_mgr.config import NETWORK, OTHER_IPS
 
 logger = logging.getLogger(__name__)
@@ -64,12 +63,9 @@ class CompIF:
             logger.debug(f"Receive: {read}")
             message = str(read)[2:-3].split(':')[1]
         except socket.timeout:
-            logger.error(f"Timeout")
+            logger.error("Timeout")
         except socket.error as e:
             logger.error(f"Socket error: {e}")
-        except Exception as e:
-            logger.warning(f"Weird message received: {read}")
-            return str(read)
 
         return message
 
