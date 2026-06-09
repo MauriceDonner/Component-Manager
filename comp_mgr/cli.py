@@ -33,7 +33,7 @@ class Menu:
 
     def init_button_list(self):
         self.button_list = self.ip_list.copy()
-        self.button_list.append('Testing')
+        #self.button_list.append('Testing')
         self.button_list.append('Retry connection')
         self.button_list.append('Autosetup Menu')
         self.button_list.append('Quit')

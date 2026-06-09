@@ -52,6 +52,7 @@ The type of components and their configurations can be found in the list below:
     - [x] Change IP address
     - [x] Set spindle tolerance to 0 (only RA320_003)
     - [x] Set slow prealigner spindle speed (for the external notch camera)
+    - [x] Set prealigner angle based on system
     - [x] Set basic settings (which are always the same within a system):
         - Host IP address
         - Host port
@@ -80,7 +81,6 @@ The type of components and their configurations can be found in the list below:
         - Log Host
         - No Interpolation
     - [x] Backup new settings
-    - [x] All axis origin search
 
 ## List of integrated components
 
@@ -96,7 +96,7 @@ The type of components and their configurations can be found in the list below:
 For safety reasons, any other component will not be able to be configured unless it is manually added.
 
 To add components, 3 files have to be modified:
-- `config.py`: Component-specific configuration dictionaries have to be added
+- `config.py`: Component-specific configurations have to be added
 - `autosetup_menu.py` / `component_menu.py`: Implementation of called functions and action factories
 - `comp.py`: Component-specific methods
 
@@ -105,7 +105,7 @@ To add components, 3 files have to be modified:
 The software is built using PyInstaller:
 
 ```
-pyinstaller --onefile --icon=CM_Icon.ico --name ComponentManager comp_mgr/__main__.py
+pyinstaller --onefile --clean --icon=CM_Icon.ico --name ComponentManager comp_mgr/__main__.py
 ```
 
 To quickly test the software without having to compile, make sure you have Python 3.13 installed on your system. Then run

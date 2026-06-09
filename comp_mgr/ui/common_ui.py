@@ -11,7 +11,6 @@ def draw_status_popup(stdscr, msg: str, until):
     
     height, width = stdscr.getmaxyx()
     box_width = len(msg) + 4
-    box_height = 3
 
     start_y = 0
     start_x = (width - box_width) // 2
