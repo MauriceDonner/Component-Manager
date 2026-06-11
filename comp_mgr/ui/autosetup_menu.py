@@ -84,12 +84,9 @@ class AutosetupMenu:
             key = stdscr.getch()
             if key == curses.KEY_UP:
                 current_row = (current_row - 1) % len(self.button_list)
-                logger.debug(f"Current row: {current_row}")
             elif key == curses.KEY_DOWN:
                 current_row = (current_row + 1) % len(self.button_list)
-                logger.debug(f"Current row: {current_row}")
             elif key == ord('\n'):
-                logger.debug(f"Current row: {current_row}")
                 selected = self.button_list[current_row]
                 if selected == '- Start Autosetup':
                     self.autosetup(stdscr)
@@ -202,10 +199,11 @@ class AutosetupMenu:
             if self.system == None:
                 return None
 
-        # Set the target IP
+        # Set the target IP and system
         for component in self.all_components.values():
             target_ip = NETWORK[self.system][component['Type']]
             component['Config_List']['Target_IP']['value'] = target_ip
+            component['System'] = self.system
     
     def check_body_IP(self, component_ID):
         """When configuring a components' body no. -> Make sure the IP changes accordingly"""

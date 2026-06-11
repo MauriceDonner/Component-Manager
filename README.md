@@ -115,3 +115,7 @@ python -m comp_mgr
 ```
 
 from the `Component Manager` directory.
+
+## Ideas and updates
+
+- Add a 'Start endurance' function to start endurance runs for individual components. Also add a button to start endurance runs for All connected loadports and prealigners.
