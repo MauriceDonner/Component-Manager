@@ -29,7 +29,7 @@ class Rorze():
     MOTION_TIMEOUT = 12
     CNCT_TIMEOUT = 5
 
-    def __init__(self, comp_info: dict):
+    def __init__(self, comp_info: dict, simulation:bool = False):
         self.ip = comp_info["IP"]
         # System (e.g. example 'WMC')
         self.system = comp_info["System"]
@@ -46,14 +46,21 @@ class Rorze():
         # Firmware Version
         self.firmware = comp_info["Firmware"]
 
+        self.simulation = simulation
+
         self.status = "Initializing..."
         logger.info(f"Initializing {self.display_name}...")
         self.lock = threading.Lock()
         self.busy = False
 
-        self.establish_connection()
+        self.establish_connection(self.simulation)
 
     def establish_connection(self,port=12100):
+
+        if self.simulation:
+            logger.warning("Simulation mode, generating data from config dict!")
+            return
+
         """ Rorze specific connection that opens a socket and waits for an acknowledgement 'CNCT' """
         self.status = "Connecting..."
         logger.info(f"Connecting to {self.display_name}...")
@@ -102,6 +109,10 @@ class Rorze():
 
     def send_and_read(self, command: str, buffer: int=1024) -> str:
         command = f"{command}\r" # \r required to send
+
+        if self.simulation:
+            logger.debug(f"(SIM) Sending: {command}")
+            return "(SIM) Response"
 
         with self.lock:
             self.busy = True
@@ -304,13 +315,22 @@ class Rorze():
         logger.debug(message)
         self.status = "Automatic status OFF. Response logged."
 
-    def set_alignment_speed(self, speed, write=1):
+    def set_aligner_speed(self, speed, write=1):
         if speed == "Slow":
             alignment_acceleration = 100000
             alignment_speed = 30000
-        elif speed == "Fast":
-            alignment_acceleration = 450000
-            alignment_speed = 120000
+        elif speed == "Normal":
+            # Leave as is, unless the speed has been set to slow before!
+            command = f"{self.read_name()}.DRCS.GTDT[003][10]"
+            alignment_acceleration = self.send_and_read(command)
+            command = f"{self.read_name()}.DRCS.GTDT[003][11]"
+            alignment_speed = self.send_and_read(command)
+            if alignment_acceleration == 100000 and alignment_speed == 30000:
+                logger.warning("Detected slow aligner setting. Restoring speed parameter.")
+                alignment_acceleration = 450000
+                alignment_speed = 120000
+            else:
+                return
 
         # Set acceleration for alignment operation
         command = f"{self.read_name()}.DRCS.STDT[003][10]={alignment_acceleration}"
@@ -456,8 +476,10 @@ class Rorze():
         if write: self.write_changes()
 
     def write_changes(self):
-        self.sock.settimeout(60)
         self.status = "Writing to flash memory..."
+        if self.simulation:
+            return
+        self.sock.settimeout(60)
         acknowledge = self.send_and_read(f"{self.read_name()}.WTDT")
         logger.debug(f"Writing data to flash memory: {acknowledge}")
         self.status = "Changes saved to flash memory."
@@ -679,8 +701,6 @@ class Rorze():
         filename_file = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
         filename = backup_dir / filename_file
 
-        logger.debug(f"Reading data to {filename}")
-
         # Make sure to not overwrite a previous backup
         while os.path.exists(filename):
             index+=1
@@ -688,7 +708,7 @@ class Rorze():
             filename = backup_dir / filename_short
             logger.warning(f"File exists! Changing filename to {filename}")
 
-        logger.debug(f"cwd = {os.getcwd()}")
+        #logger.debug(f"cwd = {os.getcwd()}")
         logger.debug(f"writing backup to = {os.path.abspath(filename)}")
 
         # Save log level and set to INFO to avoid hundreds of debug msgs

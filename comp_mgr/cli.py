@@ -25,6 +25,9 @@ logging.raiseExceptions = True
 class Menu:
 
     def __init__(self, ip_list: list):
+        ####################### Start in simulation mode #######################
+        self.simulation = False
+        ########################################################################
         self.ip_list = ip_list.copy()
         self.buttons = {ip: "[...loading]" for ip in self.ip_list}
         self.status_message = None
@@ -129,7 +132,7 @@ class Menu:
                         self.set_status("Please wait, until all components are connected", 3)
                     else:
                         try:
-                            AutosetupMenu(self.ip_list, self.all_components).run(stdscr)
+                            AutosetupMenu(self.ip_list, self.all_components, self.simulation).run(stdscr)
                         except DoubleConfiguration as e:
                             self.set_status(str(e), 3)
                         except TestException as e:
@@ -140,7 +143,7 @@ class Menu:
                     comp_info = comp_if.get_component_info(selected)
                     # Check, if the component can be connected to
                     if comp_info["Identifier"]:
-                        ComponentMenu(comp_info).run(stdscr)
+                        ComponentMenu(comp_info, self.simulation).run(stdscr)
                     else:
                         self.set_status("Unable to connect to component")
                         stdscr.refresh()

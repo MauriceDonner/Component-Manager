@@ -91,7 +91,7 @@ CONFIG_MENU_OPTIONS = {
     ],
     'RA320_003': [
         { 'label': 'Spindle tolerance fix', 'type': 'checkbox', 'key': 'Spindle_Fix', 'enabled': True},
-        { 'label': 'Slow mode (Ext. notch)', 'type': 'checkbox', 'key': 'Slow_Mode', 'enabled': False},
+        { 'label': 'Slow mode (ext. notch)', 'type': 'checkbox', 'key': 'Slow_Mode', 'enabled': False},
         { 'label': 'Notch angle', 'type': 'value', 'key': 'Notch_Angle', 'value': None, 'enabled': True}
     ],
     'RR754': [

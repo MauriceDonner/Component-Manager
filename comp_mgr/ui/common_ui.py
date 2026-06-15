@@ -176,12 +176,13 @@ class PopupMenu:
                     return label
                 elif type == 'sub_selection':
                     current_row_tmp = self.current_row
-                    value = self.draw_subwindow(label, selected['options'])
-                    if value != self.config[config_entry]['initial']:
+                    initial = self.config[config_entry]['value']
+                    new_value = self.draw_subwindow(label, selected['options'])
+                    if new_value != initial:
                         self.config[config_entry]['enabled'] = True
                     else:
                         self.config[config_entry]['enabled'] = False
-                    self.config[config_entry]['value'] = value
+                    self.config[config_entry]['value'] = new_value
                     self.current_row = current_row_tmp
                 else:
                     break

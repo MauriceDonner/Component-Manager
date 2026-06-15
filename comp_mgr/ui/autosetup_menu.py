@@ -12,7 +12,7 @@ from comp_mgr.ui.common_ui import PopupMenu, draw_status_popup, ScrollingLog
 logger = logging.getLogger(__name__)
 
 class AutosetupMenu:
-    def __init__(self, ip_list, component_dict):
+    def __init__(self, ip_list, component_dict, simulation):
         self.ip_list = ip_list
         self.button_list = []
         self.menu_items = ["- Start Autosetup","- Change system", "- Back", "- Quit"]
@@ -20,6 +20,7 @@ class AutosetupMenu:
         self.status_message = ""
         self.status_until = 0
         self.component_dict = component_dict
+        self.simulation = simulation
 
     def set_status(self, msg, duration=3):
         self.status_message = msg
@@ -128,17 +129,20 @@ class AutosetupMenu:
                 logger.info(f"Skipping Target IP for {component["SN"]}")
             else:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = True
+                component['Config_List']['Target_IP']['value'] = target_ip
                 logger.info(f"Setting Target IP for {component["SN"]}")
             
-
+            # Set component target notch angle based on system
+            if component['Type'] == 'Prealigner':
+                component['Config_List']['Notch_Angle']['value'] = 180000 if self.system == 'WMC' else 90000
+            
     def configure_component(self, stdscr, current_row):
         """
         This method contains all different steps of configuration based on which component is fed to it.
         Data for each component is stored in config.py
         """
-        for i, component in self.all_components.items():
-            logger.debug(f"{i}, {component}")
         config_dict = self.all_components[current_row]['Config_List']
+        logger.debug(f"{config_dict}")
         popup = PopupMenu(stdscr, "Select Configuration", config_dict)
         popup.run()
         stdscr.clear()
@@ -204,6 +208,10 @@ class AutosetupMenu:
             target_ip = NETWORK[self.system][component['Type']]
             component['Config_List']['Target_IP']['value'] = target_ip
             component['System'] = self.system
+
+        # Set component target notch angle based on system
+        if component['Type'] == 'Prealigner':
+            component['Config_List']['Notch_Angle']['value'] = 180000 if self.system == 'WMC' else 90000
     
     def check_body_IP(self, component_ID):
         """When configuring a components' body no. -> Make sure the IP changes accordingly"""
@@ -258,21 +266,20 @@ class AutosetupMenu:
 
         # Find Prealigner and change the setting
         for idx, component in self.all_components.items():
-            ctype = component["Type"]
-            if ctype == "Prealigner":
+            if component["Type"] == "Prealigner":
                 logger.debug(self.all_components[idx])
                 self.all_components[idx]['Config_List']['Notch_Angle']['value'] = PA_angle
     
     def initialize_component_dict(self, stdscr, component_dict):
-        # For testing
-        # all_components = {
-        #     '172.20.9.150': {'IP': '172.20.9.150', 'System': None, 'Type': 'Prealigner', 'Name': 'ALN0', 'SN': 'ACE5CFG', 'Identifier': 'RA320_003', 'Firmware': '1.03B'},
-            # '192.168.30.20': {'IP': '192.168.30.20', 'System': 'WMC', 'Type': 'Robot', 'Name': 'TRB0', 'SN': 'RC5J082', 'Identifier': 'RR754', 'Firmware': '1.19U'},
-            # '192.168.30.110': {'IP': '192.168.30.110', 'System': 'WMC', 'Type': 'Loadport_1', 'Name': 'STG1', 'SN': 'STG1504', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
-            # '172.20.9.100': {'IP': '172.20.9.100', 'System': None, 'Type': 'Loadport (Unconfigured)', 'Name': 'STG0', 'SN': 'STG1503', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
-            # }
-
-        all_components = component_dict
+        if self.simulation:
+            all_components = {
+                '172.20.9.150': {'IP': '172.20.9.150', 'System': None, 'Type': 'Prealigner', 'Name': 'ALN0', 'SN': 'ACE5CFG', 'Identifier': 'RA320_003', 'Firmware': '1.03B'},
+                '192.168.30.20': {'IP': '192.168.30.20', 'System': 'WMC', 'Type': 'Robot', 'Name': 'TRB0', 'SN': 'RC5J082', 'Identifier': 'RR754', 'Firmware': '1.19U'},
+                '192.168.30.110': {'IP': '192.168.30.110', 'System': 'WMC', 'Type': 'Loadport_1', 'Name': 'STG1', 'SN': 'STG1504', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
+                '172.20.9.100': {'IP': '172.20.9.100', 'System': None, 'Type': 'Loadport (Unconfigured)', 'Name': 'STG0', 'SN': 'STG1503', 'Identifier': 'RV201-F07-000', 'Firmware': '1.13R'},
+                }
+        else:
+            all_components = component_dict
 
         self.all_components = {}
 
@@ -333,7 +340,7 @@ class AutosetupMenu:
             if not entry['Config_List']['Configure']['enabled']: continue
 
             # Connect to component
-            component = Rorze(entry)
+            component = Rorze(entry, self.simulation)
 
             # temporary parsing - change to component.ip later
             ip = entry["IP"]
@@ -354,7 +361,12 @@ class AutosetupMenu:
 
             # Start going through the possible config actions
             for config_item, config in entry['Config_List'].items():
-                
+
+                # If slow mode is NOT chosen -> check if speed needs to be restored to normal                
+                if not config['enabled']:
+                   if config_item == "Slow_Mode":
+                       component.set_aligner_speed(speed='Normal',write=0)
+
                 if config['enabled']:
                     if config_item == "Target_IP":
                         new_ip = config["value"]
@@ -365,7 +377,7 @@ class AutosetupMenu:
                             component.change_IP(new_ip,write=0)
                     if config_item == "Notch_Angle":
                         notch_angle = config["value"]
-                        infostring = f"Setting notch angle of {identifier} to {notch_angle} mdeg"
+                        infostring = f"Setting notch angle of to {notch_angle} mdeg"
                         logger.info(infostring)
                         log.add(infostring)
                         component.set_notch_angle(notch_angle,write=0)
@@ -379,11 +391,6 @@ class AutosetupMenu:
                         logger.info(infostring)
                         log.add(infostring)
                         component.spindle_fix(write=0)
-                    elif config_item == "Slow_Mode":
-                        infostring = "Setting aligner spindle speed to slow..."
-                        logger.info(infostring)
-                        log.add(infostring)
-                        component.set_alignment_speed(speed="Slow",write=0)
                     elif config_item == "No_Interpolation":
                         infostring = "Disabling Interpolation..."
                         logger.info(infostring)
@@ -400,6 +407,11 @@ class AutosetupMenu:
                         logger.info(infostring)
                         log.add(infostring)
                         component.set_body_no(body_no,write=0)
+                    elif config_item == "Slow_Mode":
+                        infostring = "Reducing aligner speed for external notch camera"
+                        logger.info(infostring)
+                        log.add(infostring)
+                        component.set_aligner_speed(speed='Slow',write=0)
                     
             log.add("Writing changes to flash memory...")
             component.write_changes()

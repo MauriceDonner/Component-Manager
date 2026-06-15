@@ -223,7 +223,7 @@ class ComponentMenu:
     def run(self, stdscr):
         name = self.comp_info["Name"]
         if any(p in name for p in ["TRB", "ALN", "STG", "TBL"]):
-            self.component = Rorze(self.comp_info)
+            self.component = Rorze(self.comp_info, self.simulation)
         else:
             raise Exception("Unsupported component type")
 
