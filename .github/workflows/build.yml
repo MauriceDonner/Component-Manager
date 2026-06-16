@@ -25,8 +25,9 @@ jobs:
       run: |
         pyinstaller --onefile --clean --icon=CM_Icon.ico --name ComponentManager comp_mgr/__main__.py
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
+    - name: List dist folder
+      run: dir dist
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
       with:
-        name: ComponentManager
-        path: dist/ComponentManager.exe
+        files: dist/ComponentManager.exe
