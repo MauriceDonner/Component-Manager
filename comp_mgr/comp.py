@@ -53,7 +53,7 @@ class Rorze():
         self.lock = threading.Lock()
         self.busy = False
 
-        self.establish_connection(self.simulation)
+        self.establish_connection()
 
     def establish_connection(self,port=12100):
 

@@ -8,12 +8,13 @@ from comp_mgr.config import COMPONENT_MENU_OPTIONS
 logger = logging.getLogger(__name__)
 
 class ComponentMenu:
-    def __init__(self, comp_info: dict):
+    def __init__(self, comp_info: dict, simulation: bool):
         self.comp_info = comp_info
         self.component = None
         self.status_message = ""
         self.status_until = 0
         self.menu_actions = []
+        self.simulation = simulation
 
     def _resolve_action_entry(self, entry: dict) -> dict:
         """
