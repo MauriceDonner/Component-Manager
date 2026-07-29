@@ -101,6 +101,7 @@ class AutosetupMenu:
                 else:
                     self.configure_component(stdscr, current_row)
                     self.check_body_IP(current_row)
+                    logger.debug(f"AutosetupMenu->run->{self.all_components[current_row]['Config_List']}")
                     self.set_status(f"{self.all_components[current_row]['Type']} config updated")
 
     def choose_system(self, stdscr):
@@ -109,7 +110,12 @@ class AutosetupMenu:
             'SEMDEX': {"label": "SEMDEX", "type": "selection", "key": "system"}
         }
         popup = PopupMenu(stdscr, "Choose System", options)
-        self.system = popup.run()
+        temp_system = popup.run()
+
+        if temp_system == None:
+            temp_system = self.system
+        else:
+            self.system = temp_system
 
         stdscr.clear()
         stdscr.refresh()
@@ -138,11 +144,10 @@ class AutosetupMenu:
             
     def configure_component(self, stdscr, current_row):
         """
-        This method contains all different steps of configuration based on which component is fed to it.
+        Creates a popup that contains all steps of configuration for a given component
         Data for each component is stored in config.py
         """
         config_dict = self.all_components[current_row]['Config_List']
-        logger.debug(f"{config_dict}")
         popup = PopupMenu(stdscr, "Select Configuration", config_dict)
         popup.run()
         stdscr.clear()
@@ -215,13 +220,25 @@ class AutosetupMenu:
     
     def check_body_IP(self, component_ID):
         """When configuring a components' body no. -> Make sure the IP changes accordingly"""
+        # This is not solvable in the current API. We need to make this a checkbox, asking whether a body number has to be set.
+        # If yes, then open the body number menu. If no, disable the setting of any body number.
+        # Alternatively, added a 'do not set' option.
         component = self.all_components[component_ID]
+
+        # Check if the dict entry exist
         if component['Config_List'].get('Set_Body_Number', False):
             body_no = component['Config_List']['Set_Body_Number']['value']
-            if self.system == "WMC":
-                self.all_components[component_ID]['Config_List']['Target_IP']['value'] = f'192.168.30.1{body_no}0'
-            elif self.system == "SEMDEX":
-                self.all_components[component_ID]['Config_List']['Target_IP']['value'] = f'192.168.0.2{body_no}'
+            # 'do not set' option disables the config entry
+            if body_no == 'Do not set':
+                component['Config_List']['Set_Body_Number']['enabled'] = False
+                return
+            if body_no and body_no != component['Config_List']['Set_Body_Number']['initial']:
+                self.all_components[component_ID]['Config_List']['Target_IP']['enabled'] = True
+                if self.system == "WMC":
+                    self.all_components[component_ID]['Config_List']['Target_IP']['value'] = f'192.168.30.1{body_no}0'
+                elif self.system == "SEMDEX":
+                    self.all_components[component_ID]['Config_List']['Target_IP']['value'] = f'192.168.0.2{body_no}'
+                    logger.debug(f"AutosetupMenu->check_body_IP->{self.all_components[component_ID]['Config_List']}")
 
     def check_loadport_configuration(self):
         """
@@ -248,7 +265,7 @@ class AutosetupMenu:
                 )
 
         if unconfigured:
-            logger.debug(f"Configured Loadports: {configured}")
+            logger.debug(f"AutosetupMenu->check_loadport_configuration->Configured Loadports: {configured}")
             free_body = next(
                 (i+1 for i, is_configured in enumerate(configured) if not is_configured),1
                 )

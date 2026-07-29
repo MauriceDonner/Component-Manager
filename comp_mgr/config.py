@@ -103,7 +103,7 @@ CONFIG_MENU_OPTIONS = {
     ],
     'RTS13': [],
     'RV201-F07-000': [
-        { 'label': 'Set Body Number', 'type': 'sub_selection', 'options': [1,2,3], 'key': 'Set_Body_Number', 'value': None, 'initial': None, 'enabled': False }
+        { 'label': 'Set Body Number', 'type': 'sub_selection', 'options': [1,2,3,'Do not set'], 'key': 'Set_Body_Number', 'value': None, 'initial': None, 'enabled': False }
     ]
 }
 

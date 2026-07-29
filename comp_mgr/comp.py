@@ -349,13 +349,13 @@ class Rorze():
             command = f"{self.read_name()}.DEQU.STDT[6]={body_no}"
             self.send_and_read(command)
 
-            # If Body No. >1 - Also change IP
-            if body_no > 1:
-                logger.info("Setting IP according to Body No")
-                if self.system == "WMC":
-                    self.change_IP(f"192.168.30.1{body_no}0")
-                elif self.system == "SEMDEX":
-                    self.change_IP(f"192.168.0.2{body_no}")
+            # If Body No. >1 - Also change IP (why is that still in here?)
+            # if body_no > 1:
+            #     logger.info("Setting IP according to Body No")
+            #     if self.system == "WMC":
+            #         self.change_IP(f"192.168.30.1{body_no}0")
+            #     elif self.system == "SEMDEX":
+            #         self.change_IP(f"192.168.0.2{body_no}")
             if write: self.write_changes()
         else:
             status = f"Component type {self.identifier} has not been implemented"
