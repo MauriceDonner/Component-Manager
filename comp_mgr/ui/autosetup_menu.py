@@ -5,7 +5,7 @@ import os
 import sys
 import time
 from comp_mgr.comp import Rorze
-from comp_mgr.config import NETWORK, CONFIG_MENU_OPTIONS
+from comp_mgr.config import NETWORK, CONFIG_MENU_OPTIONS, PREALIGNERS, LOADPORTS, ROBOTS
 from comp_mgr.exceptions import *
 from comp_mgr.ui.common_ui import PopupMenu, draw_status_popup, ScrollingLog
 
@@ -21,6 +21,13 @@ class AutosetupMenu:
         self.status_until = 0
         self.component_dict = component_dict
         self.simulation = simulation
+
+    def return_when_no_connection(self):
+        no_components = len(self.component_dict)
+        if no_components == 0:
+            message = "No active components found"
+            logger.warning(message)
+            raise NoConnection("No component found")
 
     def set_status(self, msg, duration=3):
         self.status_message = msg
@@ -66,6 +73,8 @@ class AutosetupMenu:
         stdscr.refresh()
 
     def run(self, stdscr):
+
+        self.return_when_no_connection()
 
         # Return if no system configuration was chosen
         ini = self.initialize_component_dict(stdscr, self.component_dict)
@@ -365,12 +374,32 @@ class AutosetupMenu:
             sn = entry["SN"]
 
             log.add(f"########## Processing {entry["Identifier"]} {entry["SN"]} ##########")
-            # Save original component backup
+
+            # Save original component backup into the corresponding sub-directory
+            if identifier in LOADPORTS:
+                body_no = entry['Config_List']['Set_Body_Number']['value']
+                if body_no:
+                    subdir = component.check_subdir(f"Loadport_{body_no}")
+                else:
+                    logger.warning(f"WARNING: No body number set for Loadport {sn}")
+                    subdir = component.check_subdir("Loadport")
+            elif identifier in ROBOTS:
+                subdir = component.check_subdir("Robot")
+            elif identifier in PREALIGNERS:
+                subdir = component.check_subdir("Prealigner")
+            elif identifier == "RTS13":
+                subdir = component.check_subdir("Lineartrack")
+            else:
+                raise UnknownComponent("Component hasn't yet been added to Component Manager")
+
             infostring = "Saving original component backup..."
             logger.info(infostring)
             log.add(infostring)
-            component.read_data(suffix='_ORG')
-            files = os.listdir()
+
+            logger.debug(f"Subdir: {subdir}")
+
+            component.read_data(suffix='_ORG', subdir=subdir)
+            files = os.listdir(subdir)
             if not any(f'{sn}' in f for f in files):
                 logger.error(f"Error during autosetup - No backup file was created for {sn}")
                 logger.debug(f"Directory files: {files}")

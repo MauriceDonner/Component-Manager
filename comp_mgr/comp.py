@@ -225,6 +225,15 @@ class Rorze():
         message = self.send_and_read(command)
         if write: self.write_changes()
         self.status = f"IP set to {ip}. Please restart the component. ({message})"
+
+    def check_subdir(self, dirname):
+        """Checks, whether a subdir already exists, and if not, creates one"""
+        cwd = self.get_cwd()
+        path = cwd / dirname
+
+        if not path.is_dir(): 
+            Path(path).mkdir(exist_ok = True)
+        return path
     
     def convert_IP(self, ip):
         """Convert ip from string into Rorze int format, in which octets are reversed"""
@@ -237,7 +246,7 @@ class Rorze():
         message = self.send_and_read(command)
         self.status = message
 
-    def get_backup_dir(self):
+    def get_cwd(self):
         """Makes sure, that Pyinstaller doesn't reset the cwd"""
         if getattr(sys, "frozen", False):
             return Path(sys.executable).parent
@@ -485,12 +494,29 @@ class Rorze():
         self.status = "Changes saved to flash memory."
         self.sock.settimeout(self.TIMEOUT)
     
-    def read_data(self, suffix=""):
+    def read_data(self, suffix="", subdir=None):
         """
         This serves the same purpose as the 'Read Data' button in the
         Rorze maintenance software. It is slightly different for each component.
         """
         self.status = "Reading data..."
+
+        def get_filename(self, subdir):
+            # Timestamp
+            ts = datetime.now().strftime("%Y%m%d")
+            index = 1
+            filename_file = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
+            filename = subdir / filename_file
+
+            # Make sure to not overwrite a previous backup
+            while os.path.exists(filename):
+                index+=1
+                filename_short = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
+                filename = subdir / filename_short
+                logger.warning(f"File exists! Changing filename to {filename}")
+
+            logger.debug(f"writing backup to = {os.path.abspath(filename)}")
+            return filename
         
         def read_ip_prefix(self, file):
             IP = self.send_and_read(f"o{self.name}.GTDT[1]", 1000)
@@ -566,6 +592,7 @@ class Rorze():
                 read_block(self,"DTBL", 400, "STDA", backup)
 
         def read_data_loadport(self,filename):
+            # Read load port body number
             with open(f"{filename}", "x") as backup:
                 read_ip_prefix(self, backup)
                 read_block(self, "DEQU", 1, "STDT", backup)
@@ -694,22 +721,10 @@ class Rorze():
                 if any(arm == "25" for arm in [arm1, arm2]):
                     read_block(self,"DALN", 32, "STDT", backup)
 
-        # Timestamp
-        ts = datetime.now().strftime("%Y%m%d")
-        index = 1
-        backup_dir = self.get_backup_dir()
-        filename_file = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
-        filename = backup_dir / filename_file
-
-        # Make sure to not overwrite a previous backup
-        while os.path.exists(filename):
-            index+=1
-            filename_short = f"{self.identifier[:5]}_{self.sn}_{ts}_{index}{suffix}.dat"
-            filename = backup_dir / filename_short
-            logger.warning(f"File exists! Changing filename to {filename}")
-
-        #logger.debug(f"cwd = {os.getcwd()}")
-        logger.debug(f"writing backup to = {os.path.abspath(filename)}")
+        def read_data_sim(filename):
+            logger.warning("Simulating backup file")
+            with open(f"{filename}", "x") as backup:
+                print("Simulation", file=backup)
 
         # Save log level and set to INFO to avoid hundreds of debug msgs
         log_level = logging.getLogger(__name__).level
@@ -717,17 +732,35 @@ class Rorze():
 
         try: 
             if self.identifier in LOADPORTS:
+                if not subdir:
+                    command = f"{self.read_name()}.DEQU.GTDT[6]"
+                    body_no = self.send_and_read(command)
+                    subdir = self.check_subdir(f"Loadport_{body_no}")
+                filename = get_filename(self, subdir)
                 logger.info(f"Starting Loadport Backup for {self.name}.")
-                read_data_loadport(self, filename)
+                if self.simulation: read_data_sim(filename)
+                else: read_data_loadport(self, filename)
             elif self.identifier in ROBOTS:
+                if not subdir:
+                    subdir = self.check_subdir("Robot")
+                filename = get_filename(self, subdir)
                 logger.info(f"Starting Robot Backup for {self.name}")
-                read_data_robot(self, filename)
+                if self.simulation: read_data_sim(filename)
+                else: read_data_robot(self, filename)
             elif self.identifier in PREALIGNERS:
+                if not subdir:
+                    subdir = self.check_subdir("Prealigner")
+                filename = get_filename(self, subdir)
                 logger.info(f"Starting Prealigner Backup for {self.name}")
-                read_data_prealigner(self, filename)
+                if self.simulation: read_data_sim(filename)
+                else: read_data_prealigner(self, filename)
             elif self.identifier == "RTS13":
+                if not subdir:
+                    subdir = self.check_subdir("Lineartrack")
+                filename = get_filename(self, subdir)
                 logger.info(f"Starting Linear Track Backup for {self.name}")
-                read_data_lineartrack(self, filename)
+                if self.simulation: read_data_sim(filename)
+                else: read_data_lineartrack(self, filename)
             else:
                 error = f"Backup not implemented for component {self.identifier}"
                 logger.error(error)

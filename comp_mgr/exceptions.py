@@ -14,6 +14,9 @@ class NoBackup(AutosetupMenuError):
     """Raise, when the backup file could not be created"""
     pass
 
+class NoConnection(AutosetupMenuError):
+    """Raise, when no component is connected"""
+
 class NoSystem(AutosetupMenuError):
     """Raise when there is no system information found""" 
     pass
@@ -24,4 +27,8 @@ class TestException(AutosetupMenuError):
 
 class Unhandled(Exception):
     """Raise when no Exception has been defined yet"""
+    pass
+
+class UnknownComponent(AutosetupMenuError):
+    """Raise when the component has not been added yet"""
     pass

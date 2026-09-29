@@ -133,6 +133,8 @@ class Menu:
                     else:
                         try:
                             AutosetupMenu(self.ip_list, self.all_components, self.simulation).run(stdscr)
+                        except NoConnection as e:
+                            self.set_status(str(e), 3)
                         except DoubleConfiguration as e:
                             self.set_status(str(e), 3)
                         except TestException as e:

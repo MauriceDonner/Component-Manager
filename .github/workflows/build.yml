@@ -26,7 +26,7 @@ jobs:
 
     - name: Build
       run: |
-        pyinstaller --onefile --clean --icon=CM_Icon.ico --name ComponentManager comp_mgr/__main__.py
+        pyinstaller --onefile --clean --icon=CM_Icon.ico --name ComponentManager_${{ github.ref_name }} comp_mgr/__main__.py
 
     - name: List dist folder
       run: dir dist
