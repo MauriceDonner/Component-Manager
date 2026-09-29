@@ -31,6 +31,6 @@ jobs:
     - name: List dist folder
       run: dir dist
     - name: Create Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
-        files: dist/ComponentManager.exe
+        files: dist/ComponentManager_${{ github.ref_name }}.exe
