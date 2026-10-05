@@ -322,8 +322,10 @@ class AutosetupMenu:
                 for config_item in config_list:
                     # Use deepcopy in order not to change the original dict in config.py
                     self.all_components[i]['Config_List'][config_item['key']] = copy.deepcopy(config_item)
-            else: 
-                logger.debug(f"Component {all_components[ip]['Identifier']} not implemented in autosetup")
+            else:
+                error = f"Component {all_components[ip]['Identifier']} not implemented in autosetup"
+                logger.error(error)
+                raise UnknownComponent(f"{error}. Please disconnect it before continuing")
         
         # Check, how to setup loadports
         self.check_loadport_configuration() 

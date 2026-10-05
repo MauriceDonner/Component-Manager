@@ -36,7 +36,7 @@ class Menu:
 
     def init_button_list(self):
         self.button_list = self.ip_list.copy()
-        #self.button_list.append('Testing')
+        # self.button_list.append('Testing') # Comment to hide
         self.button_list.append('Retry connection')
         self.button_list.append('Autosetup Menu')
         self.button_list.append('Quit')
@@ -139,8 +139,9 @@ class Menu:
                             self.set_status(str(e), 3)
                         except TestException as e:
                             self.set_status(str(e), 3)
+                        except UnknownComponent as e:
+                            self.set_status(str(e), 3)
                 else:
-                    logger.debug(f"User selected {selected}.")
                     comp_if = CompIF()
                     comp_info = comp_if.get_component_info(selected)
                     # Check, if the component can be connected to
