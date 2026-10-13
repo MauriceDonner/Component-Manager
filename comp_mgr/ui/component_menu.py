@@ -1,9 +1,10 @@
 import curses, sys, threading, time
 import ipaddress
 import logging
-from comp_mgr.ui.common_ui import draw_status_popup, PopupInput, PopupMenu
+from comp_mgr.ui.common_ui import *
 from comp_mgr.comp import Rorze
 from comp_mgr.config import COMPONENT_MENU_OPTIONS
+from comp_mgr.exceptions import *
 
 logger = logging.getLogger(__name__)
 
@@ -220,6 +221,135 @@ class ComponentMenu:
             setting = popup.run()
             component.set_flip_near(setting=setting)
         return _action
+
+    def update_center_popup(self, stdscr):
+        def _action(component):
+            options = {
+                'x_offset_upper':   {"label": "X Offset upper  ", "type": "value", "value": 0, "key": "x_offset_upper"},
+                'y_offset_upper':   {"label": "Y Offset upper  ", "type": "value", "value": 0, "key": "y_offset_upper"},
+                'x_offset_lower':   {"label": "X Offset lower  ", "type": "value", "value": 0, "key": "x_offset_lower"},
+                'y_offset_lower':   {"label": "Y Offset lower  ", "type": "value", "value": 0, "key": "y_offset_lower"},
+                'x_offset_flipped': {"label": "X Offset flipped", "type": "value", "value": 0, "key": "x_offset_flipped"},
+                'y_offset_flipped': {"label": "Y Offset flipped", "type": "value", "value": 0, "key": "y_offset_flipped"},
+                'confirm': {"label": "Confirm", "type": "confirmation", "key": "confirm"}
+            }
+            # In case the user wants to configure a single station
+            options_reduced = {
+                'x_offset_upper':   {"label": "X Offset upper  ", "type": "value", "value": 0, "key": "x_offset_upper"},
+                'y_offset_upper':   {"label": "Y Offset upper  ", "type": "value", "value": 0, "key": "y_offset_upper"},
+                'x_offset_lower':   {"label": "X Offset lower  ", "type": "value", "value": 0, "key": "x_offset_lower"},
+                'y_offset_lower':   {"label": "Y Offset lower  ", "type": "value", "value": 0, "key": "y_offset_lower"},
+                'confirm': {"label": "Confirm", "type": "confirmation", "key": "confirm"}
+            }
+
+            # Let the user choose the station ID or fallback to standard station IDs
+            station_id = PopupInput(stdscr,"Enter Station ID for stage teaching (leave blank if standard)", "Station ID:").draw()
+
+            # If the standard is selected,
+            if station_id == "":
+
+                # check the default station ids first
+                check_default = component.check_centering_station()
+                if check_default != "Success":
+
+                    # This means, the station teaching is not correct or the user entered the wrong id
+                    station_id = PopupInput(stdscr,"WARNING: Teaching station not found. Enter station ID","Station ID:").draw()
+                    try:
+                        station_id_int = int(station_id)
+                    except (ValueError, TypeError):
+                        raise OutOfRange("Station ID must be an integer between 0 and 399")
+
+                    # Check user station
+                    if not 0 <= station_id_int < 400:
+                        logger.error("Station ID out of range (0-399)")
+                        raise OutOfRange("Entered station ID is out of range (0-399)")
+                    check_user_station = component.check_centering_station(user_stage_id=station_id_int)
+                    if check_user_station != "Success":
+                        error = f"The teaching data of station {station_id_int} is out of range of the expected stage teaching (value: {check_user_station})"
+                        logger.error(error)
+                        raise TeachingDataOutOfRange(error)
+
+                    # If user station fits, use reduced center teaching menu
+                    popup = PopupMenu(stdscr, "Adjust wafer centering", options_reduced)
+
+                # The data of the default teaching station fits within the expected value
+                else: 
+                    popup = PopupMenu(stdscr, "Adjust wafer centering", options)
+                    if component.system == "WMC":
+                        station_id_int = 150
+                    elif component.system == "SEMDEX":
+                        station_id_int = 2
+            
+            else: 
+                # Check user station
+                try:
+                    station_id_int = int(station_id)
+                except (ValueError, TypeError):
+                    raise OutOfRange("Station ID must be an integer between 0 and 399")
+                if not 0 <= station_id_int < 400:
+                    logger.error("Station ID out of range (0-399)")
+                    raise OutOfRange("Entered station ID is out of range (0-399)")
+                check_user_station = component.check_centering_station(user_stage_id=station_id_int)
+                if check_user_station != "Success":
+                    error = f"The teaching data of station {station_id_int} is out of range of the expected stage teaching (value: {check_user_station})"
+                    logger.error(error)
+                    raise TeachingDataOutOfRange(error)
+                popup = PopupMenu(stdscr, "Adjust wafer centering", options_reduced)
+        
+            setting = popup.run()
+
+            # TODO For debugging
+            logger.debug("Centering update:")
+            for coord in setting.values():
+                if coord['label'] == 'Confirm': continue
+                logger.debug(f"{coord['label']}: {coord['value']}")
+            
+            logger.info("Acquiring teaching data...")
+
+            teaching_values = {
+                'x_offset_upper':   component.get_teaching_value(station_id_int, 0),
+                'y_offset_upper':   component.get_teaching_value(station_id_int, 6),
+                'x_offset_lower':   component.get_teaching_value(station_id_int, 1),
+                'y_offset_lower':   component.get_teaching_value(station_id_int, 7),
+                'x_offset_flipped': component.get_teaching_value(station_id_int+1, 0),
+                'y_offset_flipped': component.get_teaching_value(station_id_int+1, 6),
+            }
+
+            logger.debug(f"Acquired data: {teaching_values}")
+            logger.debug(f"User Input: {setting}")
+
+            # Create a copy to alter
+            updated_values = teaching_values.copy()
+
+            # Compare each value
+            lines = []
+            for coord in setting.values():
+                if coord['label'] == 'Confirm': continue
+                coord_key = coord['key']
+                original_value = teaching_values[coord_key]
+                updated_values[coord_key] = original_value + int(coord['value'])
+                line = f"{coord['label']}: {original_value} + {coord['value']} -> {updated_values[coord_key]}"
+                lines.append({"text": line, "align": "left"})
+
+            logger.debug(f"Updated values: {updated_values}")
+            
+            popup = ConfirmationPopup(stdscr, "Confirm teaching changes", lines)
+            result = popup.run()
+
+            if result == "Reject":
+                error = "User rejected changing teaching values"
+                logger.error(error)
+                raise UserRejection(error)
+
+            # Apply teaching
+            component.set_teaching_value(station_id_int, 0, updated_values['x_offset_upper'], write=0)
+            component.set_teaching_value(station_id_int, 6, updated_values['y_offset_upper'], write=0)
+            component.set_teaching_value(station_id_int, 1, updated_values['x_offset_lower'], write=0)
+            component.set_teaching_value(station_id_int, 7, updated_values['y_offset_lower'], write=0)
+            component.set_teaching_value(station_id_int+1, 0, updated_values['x_offset_flipped'], write=0)
+            component.set_teaching_value(station_id_int+1, 6, updated_values['y_offset_flipped'], write=1)
+
+        return _action
     
     def run(self, stdscr):
         name = self.comp_info["Name"]
@@ -264,7 +394,10 @@ class ComponentMenu:
                     sys.exit(0)
                 elif 'action_factory' in self.menu_actions[current_row]:
                     action_entry = self.menu_actions[current_row]
-                    self.run_action_factory(stdscr, action_entry)
+                    try:
+                        self.run_action_factory(stdscr, action_entry)
+                    except Exception as e:
+                        self.set_status(str(e), 3)
                 else:
                     action = self.menu_actions[current_row]
                     self.run_action(action)

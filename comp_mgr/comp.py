@@ -15,7 +15,7 @@ import os
 import socket
 import sys
 import threading
-from comp_mgr.exceptions import NoSystem, Unhandled
+from comp_mgr.exceptions import *
 from datetime import datetime
 from pathlib import Path
 from typing import TextIO, Union
@@ -226,6 +226,39 @@ class Rorze():
         if write: self.write_changes()
         self.status = f"IP set to {ip}. Please restart the component. ({message})"
 
+    def check_centering_station(self, user_stage_id: int=-1):
+        """Checks, whether the teaching data fits the expected range"""
+        if self.system == "WMC":
+            stage_ids = [150,151]
+            x_min, x_max = 450000, 500000
+            y_min, y_max = 400000, 550000
+        elif self.system == "SEMDEX":
+            stage_ids = [2,3]
+            x_min, x_max = 275000, 325000
+            y_min, y_max = 450000, 525000
+
+        # If user inputs a stage id, check that one instead
+        if user_stage_id != -1:
+            stage_ids = [user_stage_id]
+
+        for stage_id in stage_ids:
+            command_x = f"{self.read_name()}.DTRB.GTDT[{stage_id}][0]"
+            command_y = f"{self.read_name()}.DTRB.GTDT[{stage_id}][6]"
+            x_pos = int(self.send_and_read(command_x).split(':')[1])
+            y_pos = int(self.send_and_read(command_y).split(':')[1])
+
+            logger.debug(f"ID: {stage_id} x_pos = {x_pos}")
+            logger.debug(f"ID: {stage_id} y_pos = {y_pos}")
+
+            if not x_min < x_pos < x_max:
+                logger.warning(f"Teaching position [x] on station id {stage_id} is out of range ({x_min}-{x_max}). x_pos: {x_pos}")
+                return x_pos
+            if not y_min < y_pos < y_max:
+                logger.warning(f"Teaching position [y] on station id {stage_id} is out of range ({y_min}-{y_max}). y_pos: {y_pos}")
+                return y_pos
+
+        return "Success"
+
     def check_subdir(self, dirname):
         """Checks, whether a subdir already exists, and if not, creates one"""
         cwd = self.get_cwd()
@@ -245,6 +278,9 @@ class Rorze():
         command = f"{self.read_name()}.GAIO"
         message = self.send_and_read(command)
         self.status = message
+
+    def get_centering(self):
+        """Retrieves the centering values of the robot, depending on the system"""
 
     def get_cwd(self):
         """Makes sure, that Pyinstaller doesn't reset the cwd"""
@@ -292,6 +328,11 @@ class Rorze():
         message = self.send_and_read(command)
         self.status = f"{message}"
 
+    def get_teaching_value(self, station_id: int, column):
+        command = f"{self.read_name()}.DTRB.GTDA[{station_id}][{column}]"
+        value = self.send_and_read(command).split(':')[1]
+        return int(value)
+
     def no_interpolation(self, write=1):
         self.busy=True
         self.status="Applying no interpolation..."
@@ -336,8 +377,14 @@ class Rorze():
             alignment_speed = self.send_and_read(command)
             if alignment_acceleration == 100000 and alignment_speed == 30000:
                 logger.warning("Detected slow aligner setting. Restoring speed parameter.")
-                alignment_acceleration = 450000
-                alignment_speed = 120000
+                if self.identifier == "RA320_003":
+                    alignment_acceleration = 450000
+                    alignment_speed = 120000
+                elif self.identifier == "RA420_001":
+                    alignment_acceleration = 600000
+                    alignment_speed = 150000
+                else:
+                    logger.warning("Default speed unknown. Speed settings unchanged.")
             else:
                 return
 
@@ -357,14 +404,6 @@ class Rorze():
         if any(self.identifier in lst for lst in [ROBOTS, LOADPORTS, PREALIGNERS]):
             command = f"{self.read_name()}.DEQU.STDT[6]={body_no}"
             self.send_and_read(command)
-
-            # If Body No. >1 - Also change IP (why is that still in here?)
-            # if body_no > 1:
-            #     logger.info("Setting IP according to Body No")
-            #     if self.system == "WMC":
-            #         self.change_IP(f"192.168.30.1{body_no}0")
-            #     elif self.system == "SEMDEX":
-            #         self.change_IP(f"192.168.0.2{body_no}")
             if write: self.write_changes()
         else:
             status = f"Component type {self.identifier} has not been implemented"
@@ -475,6 +514,23 @@ class Rorze():
             for work in range(3):
                 command = f"{self.read_name()}.DALN.STDT[{work}][14]={notch_angle}"
                 self.send_and_read(command)
+        if write: self.write_changes()
+
+    def set_teaching_value(self, station_id, column, value, write=1):
+        """Set a single value in the teaching matrix. Throws an exception if that change is too large"""
+        #Get teaching value
+        command = f"{self.read_name()}.DTRB.GTDA[{station_id}][{column}]"
+        before = int(self.send_and_read(command).split(':')[1])
+
+        if abs(before-value) > 2000:
+            error = "Large change in teaching value detected"
+            logger.error("Large change in teaching data detected")
+            raise LargeTeachingChange(error)
+
+        logger.debug(f"Setting station {station_id} column {column} from {before} to {value}")
+
+        command = f"{self.read_name()}.DTRB.STDA[{station_id}][{column}]={value}"
+        self.send_and_read(command)
         if write: self.write_changes()
     
     def spindle_fix(self, write=1):
@@ -620,11 +676,13 @@ class Rorze():
                     for i in range(5):
                         read_block(self, "DSDB", 3, f"STDT[{i:03}]", backup, add_leading=True)
                     read_block(self, "DTMP", 1, "STDT", backup, add_leading=True)
+                    read_block(self, "DCAM", 4, "STDT", backup, add_leading=True)
                     read_block(self, "DALN", 10, "STDT", backup, add_leading=True)
                     read_block(self, "DROT", 100, "STDT", backup, add_leading=True)
                     read_block(self, "DPRS", 1, "STDT", backup, add_leading=True)
                     read_block(self, "DSEN", 10, "STDT", backup, add_leading=True)
                     read_block(self, "DRCP", 10, "STDT", backup, add_leading=True)
+                    read_block(self, "DOUT", 64, "STDT", backup, add_leading=True)
 
                 elif self.identifier == "RA320_003":
                     read_block(self,"DRES", 1, "STDT", backup, add_leading=True)
@@ -734,7 +792,7 @@ class Rorze():
             if self.identifier in LOADPORTS:
                 if not subdir:
                     command = f"{self.read_name()}.DEQU.GTDT[6]"
-                    body_no = self.send_and_read(command)
+                    body_no = self.send_and_read(command).split(":")[1]
                     subdir = self.check_subdir(f"Loadport_{body_no}")
                 filename = get_filename(self, subdir)
                 logger.info(f"Starting Loadport Backup for {self.name}.")

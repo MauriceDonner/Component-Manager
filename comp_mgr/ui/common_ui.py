@@ -1,6 +1,7 @@
 import curses
 import time
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -133,12 +134,16 @@ class PopupMenu:
         except ValueError:
             logger.warning(f"ValueError in common_ui -> edit_value: '{new_val}' not parsed correctly")
             pass
-        if new_val == '':
-            self.config[key]['value'] = None
-            self.config[key]['enabled'] = False
-        else:
-            self.config[key]['value'] = new_val
-            self.config[key]['enabled'] = True
+        try:
+            if new_val == '':
+                self.config[key]['value'] = None
+                self.config[key]['enabled'] = False
+            else:
+                self.config[key]['value'] = new_val
+                self.config[key]['enabled'] = True
+        except Exception as e:
+            logger.error(e)
+            sys.exit(0)
 
     def run(self):
         """Run the popup"""
@@ -171,6 +176,7 @@ class PopupMenu:
                     current_val = self.config[config_entry]['enabled']
                     self.config[config_entry]['enabled'] = not current_val
                 elif type == "value":
+                    self.current_row+=1
                     self.edit_value(win, config_entry)
                 elif type == "selection":
                     return label
@@ -184,12 +190,157 @@ class PopupMenu:
                         self.config[config_entry]['enabled'] = False
                     self.config[config_entry]['value'] = new_value
                     self.current_row = current_row_tmp
+                elif type == "confirmation":
+                    return self.config
                 else:
                     break
             elif key == 27:  # ESC to exit
                 break
 
         del win  # Cleanup window
+
+class ConfirmationPopup:
+    def __init__(self, stdscr, title, lines):
+        """
+        :param stdscr: curses main window
+        :param title: str – popup title
+        :param lines: list[dict] – lines to display
+        Example:
+           [{"text": "Are you sure?", "align": "center"},
+            {"text": "This will modify the configuration.", "align": "left"},
+            {"text": "The change cannot be undone.", "align": "center"}]
+        """
+        self.stdscr = stdscr
+        self.title = title
+        self.lines = lines
+        self.current_button = 0
+
+        self.buttons = ["Confirm", "Reject"]
+
+    def draw(self, win):
+        """Draw the popup."""
+        win.clear()
+        win.box()
+
+        height, width = win.getmaxyx()
+
+        # Title
+        win.attron(curses.A_BOLD)
+        win.addstr(0, 2, f" {self.title} ")
+        win.attroff(curses.A_BOLD)
+
+        # Draw text lines
+        for i, line in enumerate(self.lines):
+            text = line.get("text", "")
+            alignment = line.get("align", "left")
+
+            # Don't let text overwrite the box borders
+            available_width = width - 4
+            text = text[:available_width]
+
+            if alignment == "center":
+                x = (width - len(text)) // 2
+            else:
+                x = 2
+
+            try:
+                win.addstr(i + 2, x, text)
+            except curses.error:
+                pass
+
+        # Buttons
+        button_y = height - 2
+
+        confirm = "[ Confirm ]"
+        reject = "[ Reject ]"
+
+        total_width = len(confirm) + len(reject) + 6
+        start_x = (width - total_width) // 2
+
+        confirm_x = start_x
+        reject_x = confirm_x + len(confirm) + 6
+
+        if self.current_button == 0:
+            win.attron(curses.color_pair(1))
+            win.addstr(button_y, confirm_x, confirm)
+            win.attroff(curses.color_pair(1))
+            win.addstr(button_y, reject_x, reject)
+        else:
+            win.addstr(button_y, confirm_x, confirm)
+            win.attron(curses.color_pair(1))
+            win.addstr(button_y, reject_x, reject)
+            win.attroff(curses.color_pair(1))
+
+        win.refresh()
+
+    def run(self):
+        """Run the confirmation popup and return the selected button."""
+        height, width = self.stdscr.getmaxyx()
+
+        # +6 gives room for:
+        # top border
+        # title
+        # spacing
+        # text
+        # buttons
+        # bottom border
+        win_height = len(self.lines) + 6
+
+        # Make popup wide enough for both buttons and the longest line
+        longest_line = max(
+            [len(str(line.get("text", ""))) for line in self.lines],
+            default=0
+        )
+
+        button_width = len("[ Confirm ]") + len("[ Reject ]") + 6
+
+        win_width = max(
+            width // 2,
+            longest_line + 4,
+            button_width + 4
+        )
+
+        # Don't make popup larger than terminal
+        win_width = min(win_width, width - 2)
+        win_height = min(win_height, height - 2)
+
+        start_y = (height - win_height) // 2
+        start_x = (width - win_width) // 2
+
+        win = curses.newwin(
+            win_height,
+            win_width,
+            start_y,
+            start_x
+        )
+
+        win.keypad(True)
+
+        curses.start_color()
+        curses.init_pair(
+            1,
+            curses.COLOR_BLACK,
+            curses.COLOR_WHITE
+        )
+
+        while True:
+            self.draw(win)
+
+            key = win.getch()
+
+            if key in (curses.KEY_LEFT, curses.KEY_UP):
+                self.current_button = 0
+
+            elif key in (curses.KEY_RIGHT, curses.KEY_DOWN):
+                self.current_button = 1
+
+            elif key in (ord("\n"), curses.KEY_ENTER):
+                return self.buttons[self.current_button]
+
+            elif key == 27:  # ESC
+                return "Reject"
+
+        del win
 
 class PopupInput:
     def __init__(self, stdscr, title, text):
@@ -222,7 +373,7 @@ class PopupInput:
         new_val = win.getstr(win_height - 2, text_length + 2, 20).decode("utf-8")
         curses.noecho()
         if new_val == '':
-            return
+            return "" 
         else:
             logger.debug(f"value received: {new_val}")
             return new_val

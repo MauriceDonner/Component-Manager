@@ -91,6 +91,10 @@ CONFIG_MENU_OPTIONS = {
         {'label': 'Change IP', 'type': 'value', 'key': 'Target_IP', 'value': None, 'enabled': False},
         {'label': 'Basic settings', 'type': 'checkbox', 'key': 'Basic_Settings', 'enabled': True}
     ],
+    'RA320_002': [
+        { 'label': 'Slow mode (ext. notch)', 'type': 'checkbox', 'key': 'Slow_Mode', 'enabled': False},
+        { 'label': 'Notch angle', 'type': 'value', 'key': 'Notch_Angle', 'value': None, 'enabled': True}
+    ],
     'RA320_003': [
         { 'label': 'Spindle tolerance fix', 'type': 'checkbox', 'key': 'Spindle_Fix', 'enabled': True},
         { 'label': 'Slow mode (ext. notch)', 'type': 'checkbox', 'key': 'Slow_Mode', 'enabled': False},
@@ -101,6 +105,7 @@ CONFIG_MENU_OPTIONS = {
         { 'label': 'Flip near', 'type': 'checkbox', 'key': 'Flip_Near', 'enabled': True},
     ],
     'RA420_001': [
+        { 'label': 'Slow mode (ext. notch)', 'type': 'checkbox', 'key': 'Slow_Mode', 'enabled': False},
         { 'label': 'Notch angle', 'type': 'value', 'key': 'Notch_Angle', 'value': None, 'enabled': False}
     ],
     'RTS13': [],
@@ -118,6 +123,7 @@ COMPONENT_MENU_OPTIONS = {
     ],
     'RR754': [
         {'label': 'Read External Sensors (GAIO)', 'type': 'command', 'action': 'GAIO'},
+        {'label': 'Adjust wafer centering', 'type': 'menu', 'action': 'update_center', 'action_factory': 'update_center_popup'},
         # {'label': 'Set Automatic Status Reports ON (SAIO)', 'type': 'command', 'action': 'SAIO_on'},
         # {'label': 'Set Automatic Status Reports OFF (SAIO)', 'type': 'command', 'action': 'SAIO_off'},
         # {'label': 'Set upper arm laser', 'type': 'selection', 'action': 'set_laser', 'action_factory': 'upper_laser_popup'},

@@ -142,10 +142,12 @@ class AutosetupMenu:
             if component['IP'] == target_ip:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = False
                 logger.info(f"Skipping Target IP for {component["SN"]}")
+                self.check_IP_body(i)
             else:
+                logger.info(f"Setting Target IP for {component["SN"]}")
                 self.all_components[i]['Config_List']['Configure']['enabled'] = True
                 component['Config_List']['Target_IP']['value'] = target_ip
-                logger.info(f"Setting Target IP for {component["SN"]}")
+                self.check_IP_body(i)
             
             # Set component target notch angle based on system
             if component['Type'] == 'Prealigner':
@@ -249,6 +251,25 @@ class AutosetupMenu:
                     self.all_components[component_ID]['Config_List']['Target_IP']['value'] = f'192.168.0.2{body_no}'
                     logger.debug(f"AutosetupMenu->check_body_IP->{self.all_components[component_ID]['Config_List']}")
 
+    def check_IP_body(self, component_ID):
+        """When configuring a components' IP -> Make sure the body number changes accordingly"""
+        component = self.all_components[component_ID]
+
+        # Check if the dict entry exist
+        if component['Config_List'].get('Set_Body_Number', False):
+
+            # If IP is changed, apply change to body number aswell
+            if component['Config_List']['Target_IP']['enabled']:
+
+                component_ip = component['Config_List']['Target_IP']['value']
+                target_body_no = component_ip.split(".")[3][1]
+                body_no = component['Config_List']['Set_Body_Number']['value']
+
+                if body_no != target_body_no:
+                    logger.info(f"Setting body no of LP {component["SN"]} to {target_body_no}")
+                    component['Config_List']['Set_Body_Number']['value'] = target_body_no
+                    component['Config_List']['Set_Body_Number']['enabled'] == True
+
     def check_loadport_configuration(self):
         """
         Method will check how many LPs are connected. Two cases have to be handled in case of multiple LPs:
@@ -256,24 +277,44 @@ class AutosetupMenu:
         2. There are multiple unconfigured loadports connected -> Throw an exception due to possible IP conflicts
         (Later we could implement multi-LP setup)
         """
+        logger.info("Checking loadport configuration")
         configured = [False, False, False]
         unconfigured = []
+
+
         for idx, component in self.all_components.items():
             ctype = component["Type"]
+            cip = component["IP"]
+
             # Check, if there are any configured loadports within the system
+            # Loadports that are configured have the correct system IP
             if ctype.startswith('Loadport_'):
                 lp_no = int(component['Type'][-1])
-                configured[lp_no-1] = True
-                component['Config_List']['Set_Body_Number']['initial'] = lp_no
-            elif ctype == 'Loadport (Unconfigured)':
-                unconfigured.append(idx)
 
-        if len(unconfigured) > 1:
-            raise MultipleUnconfiguredLoadports(
-                "Only connect one unconfigured loadport at once to avoid IP conflicts"
-                )
+                # Check, which system to to configure for
+                if self.system == "SEMDEX":
+                    check_ip = f"192.168.0.2{lp_no}"
+                elif self.system == "WMC":
+                    check_ip = f"192.168.30.1{lp_no}0"
 
-        if unconfigured:
+                if cip == check_ip:
+                    configured[lp_no-1] = True
+                    component['Config_List']['Set_Body_Number']['initial'] = lp_no
+                else: 
+                    unconfigured.append(idx)
+
+        # If multiple loadports are unconfigured, assign them by their initial loadport number
+        if unconfigured and len(unconfigured) > 1:
+
+            logger.debug(f"Multiple unconfigured loadports found: {unconfigured}")
+            for idx in unconfigured:
+                lp_no = int(self.all_components[idx]['Type'][-1])
+                logger.debug(f"Setting Loadport {lp_no} body number")
+                self.all_components[idx]['Config_List']['Set_Body_Number']['value'] = lp_no
+                self.all_components[idx]['Config_List']['Set_Body_Number']['enabled'] = True
+
+        # If only one loadport is unconfigured, choose the next free spot
+        if unconfigured and len(unconfigured) == 1:
             logger.debug(f"AutosetupMenu->check_loadport_configuration->Configured Loadports: {configured}")
             free_body = next(
                 (i+1 for i, is_configured in enumerate(configured) if not is_configured),1
@@ -314,31 +355,27 @@ class AutosetupMenu:
             # Check, whether a component is in the list of known components
             if all_components[ip]['Identifier'] in CONFIG_MENU_OPTIONS:
                 self.all_components[component_idx] = all_components[ip]
-                component_idx+=1
                 # Set up a configuration list for each component
-                type = self.all_components[i]['Identifier']
+                type = self.all_components[component_idx]['Identifier']
                 config_list = CONFIG_MENU_OPTIONS['Common'] + CONFIG_MENU_OPTIONS[type]
-                self.all_components[i]['Config_List'] = {}
+                self.all_components[component_idx]['Config_List'] = {}
                 for config_item in config_list:
                     # Use deepcopy in order not to change the original dict in config.py
-                    self.all_components[i]['Config_List'][config_item['key']] = copy.deepcopy(config_item)
+                    self.all_components[component_idx]['Config_List'][config_item['key']] = copy.deepcopy(config_item)
+                component_idx+=1
             else:
-                error = f"Component {all_components[ip]['Identifier']} not implemented in autosetup"
-                logger.error(error)
-                raise UnknownComponent(f"{error}. Please disconnect it before continuing")
-        
-        # Check, how to setup loadports
-        self.check_loadport_configuration() 
-
-        logger.info('=== AUTOSETUP COMPONENTS ===')
-        for component in self.all_components.values():
-            logger.info(f'{component['Type']} {component['Identifier']}')
-            logger.debug(f'{component}')
-
-        self.ncomponents = len(all_components)
+                warning = f"Component {all_components[ip]['Identifier']} not implemented in autosetup"
+                logger.warning(warning)
         
         logger.info("Determining system config...")
         self.create_system_config(stdscr)
+
+        # Check, how to setup loadports TODO: Does not update config
+        self.check_loadport_configuration() 
+
+        logger.info('=== AUTOSETUP COMPONENTS ===')
+        self.ncomponents = len(all_components)
+        
         if self.system == None:
             return "cancel"
         logger.info(f"System configuration: {self.system}")
@@ -353,11 +390,16 @@ class AutosetupMenu:
                 self.all_components[i]['Config_List']['Target_IP']['enabled'] = True
             else:
                 self.all_components[i]['Config_List']['Configure']['enabled'] = False
+
+        for component in self.all_components.values():
+            logger.info(f'{component['Type']} {component['Identifier']}')
+            logger.debug(f'AutosetupMenu->initialize_component_dict: {component}')
     
     def autosetup(self, stdscr):
         """
         Define here, which actions are taken when a Config_List entry is read.
         """
+        logger.info('==== STARTING AUTOSETUP ====')
         # Start the log screen
         log = ScrollingLog(stdscr)
         log.add("Starting Autosetup...")
@@ -466,7 +508,7 @@ class AutosetupMenu:
 
             log.add("Saving component backup...")
             # Save altered component backup
-            component.read_data()
+            component.read_data(subdir=subdir)
 
             logger.info(f"#################### Autosetup complete for {identifier} ####################")
 
