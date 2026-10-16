@@ -219,15 +219,22 @@ class AutosetupMenu:
             if self.system == None:
                 return None
 
-        # Set the target IP and system
         for component in self.all_components.values():
+
+            # Set the target IP and system
             target_ip = NETWORK[self.system][component['Type']]
             component['Config_List']['Target_IP']['value'] = target_ip
             component['System'] = self.system
 
-        # Set component target notch angle based on system
-        if component['Type'] == 'Prealigner':
-            component['Config_List']['Notch_Angle']['value'] = 180000 if self.system == 'WMC' else 90000
+            # Set component target notch angle based on system
+            if component['Type'] == 'Prealigner':
+                component['Config_List']['Notch_Angle']['enabled'] = True
+                component['Config_List']['Notch_Angle']['value'] = 180000 if self.system == 'WMC' else 90000
+
+            # Set spindle offset if Spindle prealigner is used in SemDex
+            if component['Identifier'] == 'RA320_003' and self.system == 'SEMDEX':
+                component['Config_List']['Spindle_Angle']['enabled'] = True
+                component['Config_List']['Spindle_Angle']['value'] = 30000 
     
     def check_body_IP(self, component_ID):
         """When configuring a components' body no. -> Make sure the IP changes accordingly"""
@@ -281,7 +288,6 @@ class AutosetupMenu:
         configured = [False, False, False]
         unconfigured = []
 
-
         for idx, component in self.all_components.items():
             ctype = component["Type"]
             cip = component["IP"]
@@ -324,18 +330,6 @@ class AutosetupMenu:
             unconf_component['Config_List']['Set_Body_Number']['value'] = free_body
             unconf_component['Config_List']['Set_Body_Number']['enabled'] = True
             unconf_component['Type'] = f'Loadport_{free_body}'
-        
-    def check_prealigner_configuration(self):
-        if self.system == "SEMDEX":
-            PA_angle = 90000
-        elif self.system == "WMC":
-            PA_angle = 180000
-
-        # Find Prealigner and change the setting
-        for idx, component in self.all_components.items():
-            if component["Type"] == "Prealigner":
-                logger.debug(self.all_components[idx])
-                self.all_components[idx]['Config_List']['Notch_Angle']['value'] = PA_angle
     
     def initialize_component_dict(self, stdscr, component_dict):
         if self.simulation:
@@ -379,9 +373,6 @@ class AutosetupMenu:
         if self.system == None:
             return "cancel"
         logger.info(f"System configuration: {self.system}")
-
-        # Check, how to setup prealigner, after system is set
-        self.check_prealigner_configuration()
 
         for i, component in self.all_components.items():
             target_ip = NETWORK[self.system][component["Type"]]
@@ -465,12 +456,18 @@ class AutosetupMenu:
                             logger.info(infostring)
                             log.add(infostring)
                             component.change_IP(new_ip,write=0)
-                    if config_item == "Notch_Angle":
+                    elif config_item == "Notch_Angle":
                         notch_angle = config["value"]
-                        infostring = f"Setting notch angle of to {notch_angle} mdeg"
+                        infostring = f"Setting notch angle of {identifier} to {notch_angle} mdeg"
                         logger.info(infostring)
                         log.add(infostring)
                         component.set_notch_angle(notch_angle,write=0)
+                    elif config_item == "Spindle_Angle":
+                        spindle_angle = config["value"]
+                        infostring = f"Setting spindle angle of {identifier} to {spindle_angle} mdeg"
+                        logger.info(infostring)
+                        log.add(infostring)
+                        component.set_spindle_angle(spindle_angle,write=0)
                     elif config_item == "Basic_Settings":
                         infostring = "Applying basic settings..."
                         logger.info(infostring)

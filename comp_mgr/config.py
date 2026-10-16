@@ -98,7 +98,8 @@ CONFIG_MENU_OPTIONS = {
     'RA320_003': [
         { 'label': 'Spindle tolerance fix', 'type': 'checkbox', 'key': 'Spindle_Fix', 'enabled': True},
         { 'label': 'Slow mode (ext. notch)', 'type': 'checkbox', 'key': 'Slow_Mode', 'enabled': False},
-        { 'label': 'Notch angle', 'type': 'value', 'key': 'Notch_Angle', 'value': None, 'enabled': True}
+        { 'label': 'Notch angle', 'type': 'value', 'key': 'Notch_Angle', 'value': None, 'enabled': False},
+        { 'label': 'Spindle angle', 'type': 'value', 'key': 'Spindle_Angle', 'value': None, 'enabled': False}
     ],
     'RR754': [
         { 'label': 'No interpolation', 'type': 'checkbox', 'key': 'No_Interpolation', 'enabled': True},

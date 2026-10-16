@@ -398,6 +398,10 @@ class Rorze():
         command = f"{self.read_name()}.DRCS.STDT[003][12]={alignment_acceleration}"
         self.send_and_read(command)
         logger.info(f"Setting aligner speed to {alignment_speed} and acceleration to {alignment_acceleration}")
+        # If slow speed is enabled, increase external notch width for Keyence camera (usually >10000)
+        if self.identifier == 'RA320_003' and speed == "Slow":
+            command = f"{self.read_name()}.DRES.STDT[41]=20000"
+            self.send_and_read(command)
         if write: self.write_changes()
     
     def set_body_no(self, body_no, write=1):
@@ -515,6 +519,14 @@ class Rorze():
                 command = f"{self.read_name()}.DALN.STDT[{work}][14]={notch_angle}"
                 self.send_and_read(command)
         if write: self.write_changes()
+
+    def set_spindle_angle(self, spindle_angle, write=1):
+        if self.identifier == "RA320_003":
+            command = f"{self.read_name()}.DALN.STDT[0][14]={spindle_angle}"
+            self.send_and_read(command)
+            command = f"{self.read_name()}.DALN.STDT[0][15]={spindle_angle}"
+            self.send_and_read(command)
+            if write: self.write_changes()
 
     def set_teaching_value(self, station_id, column, value, write=1):
         """Set a single value in the teaching matrix. Throws an exception if that change is too large"""
@@ -829,6 +841,7 @@ class Rorze():
         except Exception as e:
             logger.error(f"Reading failed: {e}")
             self.status = {f"Reading failed: {e}"}
+            raise NoBackup("Something went wrong during Backup creation. Aborting the setup.")
 
         # restore log level
         logging.getLogger(__name__).setLevel(log_level)
